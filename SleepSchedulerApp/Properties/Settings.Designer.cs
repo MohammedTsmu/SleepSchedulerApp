@@ -58,5 +58,28 @@ namespace SleepSchedulerApp.Properties {
                 this["RunOnStartup"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int RestrictionPeriod {
+            get {
+                return ((int)(this["RestrictionPeriod"]));
+            }
+            set {
+                this["RestrictionPeriod"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::System.DateTime LastSettingsChangeTime {
+            get {
+                return ((global::System.DateTime)(this["LastSettingsChangeTime"]));
+            }
+            set {
+                this["LastSettingsChangeTime"] = value;
+            }
+        }
     }
 }

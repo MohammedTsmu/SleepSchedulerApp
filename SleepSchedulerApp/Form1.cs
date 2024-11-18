@@ -1,9 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Windows.Forms;
-using System.Runtime.InteropServices;
-
-
 
 namespace SleepSchedulerApp
 {
@@ -28,10 +25,24 @@ namespace SleepSchedulerApp
             dateTimePickerEnd.Value = selectedEndTime;
             checkBoxStartup.Checked = Properties.Settings.Default.RunOnStartup;
 
+            // **Load the restriction period**
+            numericUpDownRestrictionPeriod.Value = Properties.Settings.Default.RestrictionPeriod;
+
+            // **Display the last settings change time**
+            DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
+            if (lastChange > DateTime.MinValue)
+            {
+                labelLastChangeTime.Text = $"تم تعديل الإعدادات آخر مرة في: {lastChange}";
+            }
+            else
+            {
+                labelLastChangeTime.Text = "لم يتم تعديل الإعدادات بعد.";
+            }
+
             // Subscribe to the SessionSwitch event
             SystemEvents.SessionSwitch += new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
 
-            // Optionally, handle FormClosing to prevent closing during sleep time
+            // Handle FormClosing to prevent closing during sleep time
             this.FormClosing += Form1_FormClosing;
 
             // Subscribe to the FormClosed event
@@ -60,7 +71,7 @@ namespace SleepSchedulerApp
             Properties.Settings.Default.Save();
 
             string appPath = Application.ExecutablePath;
-            using (Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
+            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
             {
                 if (checkBoxStartup.Checked)
                 {
@@ -75,15 +86,49 @@ namespace SleepSchedulerApp
 
         private void buttonSaveSettings_Click(object sender, EventArgs e)
         {
-            MessageBox.Show($"Start Time: {selectedStartTime}\nEnd Time: {selectedEndTime}");
+            // **Check if the restriction period has passed**
+            DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
+            int restrictionHours = (int)numericUpDownRestrictionPeriod.Value;
 
+            if (restrictionHours > 0 && lastChange > DateTime.MinValue)
+            {
+                DateTime restrictionEndTime = lastChange.AddHours(restrictionHours);
+
+                if (DateTime.Now < restrictionEndTime)
+                {
+                    TimeSpan timeLeft = restrictionEndTime - DateTime.Now;
+                    MessageBox.Show($"لا يمكنك تغيير إعدادات النوم حتى {restrictionEndTime}.\n" +
+                                    $"الوقت المتبقي: {timeLeft.Hours} ساعة و {timeLeft.Minutes} دقيقة.",
+                                    "قيود التغيير نشطة", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+
+            // Validate that end time is after start time
             if (selectedEndTime <= selectedStartTime)
             {
-                MessageBox.Show("End time must be after start time.");
+                MessageBox.Show("يجب أن يكون وقت انتهاء النوم بعد وقت بدء النوم.");
                 return;
             }
 
-            MessageBox.Show("Settings saved successfully.");
+            // Save the new sleep times
+            selectedStartTime = dateTimePickerStart.Value;
+            selectedEndTime = dateTimePickerEnd.Value;
+            Properties.Settings.Default.StartTime = selectedStartTime;
+            Properties.Settings.Default.EndTime = selectedEndTime;
+
+            // **Save the restriction period**
+            Properties.Settings.Default.RestrictionPeriod = restrictionHours;
+
+            // **Update the last settings change time**
+            Properties.Settings.Default.LastSettingsChangeTime = DateTime.Now;
+
+            Properties.Settings.Default.Save();
+
+            MessageBox.Show("تم حفظ الإعدادات بنجاح.");
+
+            // **Update the last change time label**
+            labelLastChangeTime.Text = $"تم تعديل الإعدادات آخر مرة في: {DateTime.Now}";
 
             // Call CheckSleepTime to set up new timers
             CheckSleepTime();
@@ -101,7 +146,7 @@ namespace SleepSchedulerApp
 
             if (now >= todayStart && now <= todayEnd)
             {
-                LogEvent("Current time is within sleep time. Enforcing sleep policy.");
+                LogEvent("الوقت الحالي ضمن وقت النوم. يتم تطبيق سياسة النوم.");
                 ShowCountdownAndShutdown();
             }
             else if (now < todayStart)
@@ -119,24 +164,24 @@ namespace SleepSchedulerApp
                     {
                         preSleepTimer.Stop();
                         preSleepTimer.Dispose();
-                        LogEvent("One minute before sleep time. Showing countdown window.");
+                        LogEvent("بقيت دقيقة واحدة لوقت النوم. يتم عرض نافذة العد التنازلي.");
                         ShowCountdownBeforeSleep();
                     };
                     preSleepTimer.Start();
                 }
                 else if (timeUntilSleep.TotalMilliseconds > 0)
                 {
-                    LogEvent("Less than one minute to sleep time. Showing countdown immediately.");
+                    LogEvent("أقل من دقيقة واحدة لوقت النوم. يتم عرض العد التنازلي فوراً.");
                     ShowCountdownBeforeSleep();
                 }
                 else
                 {
-                    LogEvent("Current time is outside sleep time. No action taken.");
+                    LogEvent("الوقت الحالي خارج وقت النوم. لم يتم اتخاذ أي إجراء.");
                 }
             }
             else
             {
-                LogEvent("Current time is outside sleep time. No action taken.");
+                LogEvent("الوقت الحالي خارج وقت النوم. لم يتم اتخاذ أي إجراء.");
             }
         }
 
@@ -147,7 +192,7 @@ namespace SleepSchedulerApp
 
             if (result == DialogResult.OK)
             {
-                LogEvent("Countdown before sleep finished. Preparing to shutdown.");
+                LogEvent("انتهى العد التنازلي قبل وقت النوم. يتم التحضير لإيقاف التشغيل.");
 
                 // Dispose existing shutdown timer
                 shutdownTimer?.Stop();
@@ -169,7 +214,7 @@ namespace SleepSchedulerApp
             }
             else
             {
-                LogEvent("Countdown before sleep canceled by the user. Will retry in 5 minutes.");
+                LogEvent("تم إلغاء العد التنازلي قبل وقت النوم من قبل المستخدم. سيتم إعادة المحاولة بعد 5 دقائق.");
 
                 // Dispose existing pre-sleep retry timer
                 preSleepTimer?.Stop();
@@ -191,12 +236,12 @@ namespace SleepSchedulerApp
 
                     if (now < todayStart)
                     {
-                        LogEvent("Retrying pre-sleep countdown.");
+                        LogEvent("إعادة المحاولة للعد التنازلي قبل وقت النوم.");
                         ShowCountdownBeforeSleep();
                     }
                     else
                     {
-                        LogEvent("Pre-sleep retry skipped as sleep time has started.");
+                        LogEvent("تم تجاوز إعادة المحاولة لأن وقت النوم قد بدأ.");
                     }
                 };
 
@@ -206,7 +251,7 @@ namespace SleepSchedulerApp
 
         private void ShowCountdownAndShutdown()
         {
-            LogEvent("Sleep time has started. Preparing to shut down the computer.");
+            LogEvent("بدأ وقت النوم. يتم التحضير لإيقاف تشغيل الكمبيوتر.");
 
             // Show a non-cancellable countdown
             CountdownForm countdownForm = new CountdownForm(10, false);
@@ -219,14 +264,14 @@ namespace SleepSchedulerApp
         {
             try
             {
-                LogEvent("Attempting to shutdown the computer.");
+                LogEvent("محاولة إيقاف تشغيل الكمبيوتر.");
                 System.Diagnostics.Process.Start("shutdown", "/s /f /t 0");
-                LogEvent("Computer shutdown command issued successfully.");
+                LogEvent("تم إصدار أمر إيقاف تشغيل الكمبيوتر بنجاح.");
             }
             catch (Exception ex)
             {
-                LogEvent($"Failed to shutdown the computer: {ex.Message}");
-                MessageBox.Show($"Failed to shutdown the computer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                LogEvent($"فشل في إيقاف تشغيل الكمبيوتر: {ex.Message}");
+                MessageBox.Show($"فشل في إيقاف تشغيل الكمبيوتر: {ex.Message}", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -248,7 +293,6 @@ namespace SleepSchedulerApp
             }
         }
 
-
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
@@ -258,7 +302,7 @@ namespace SleepSchedulerApp
         {
             if (e.Reason == SessionSwitchReason.SessionUnlock)
             {
-                LogEvent("User has unlocked the session. Checking sleep time.");
+                LogEvent("قام المستخدم بإلغاء قفل الجلسة. يتم التحقق من وقت النوم.");
 
                 DateTime now = DateTime.Now;
                 DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
@@ -271,7 +315,7 @@ namespace SleepSchedulerApp
                 }
                 else
                 {
-                    LogEvent("Sleep time has ended. No action taken.");
+                    LogEvent("انتهى وقت النوم. لم يتم اتخاذ أي إجراء.");
                 }
             }
         }
@@ -286,7 +330,7 @@ namespace SleepSchedulerApp
             {
                 // Prevent closing during sleep time
                 e.Cancel = true;
-                MessageBox.Show("You cannot close the application during sleep time.", "Sleep Scheduler", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("لا يمكنك إغلاق التطبيق خلال وقت النوم.", "جدولة النوم", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
     }

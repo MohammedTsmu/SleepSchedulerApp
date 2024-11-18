@@ -2,15 +2,7 @@
 {
     partial class Form1
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
-
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -22,10 +14,6 @@
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             this.labelStart = new System.Windows.Forms.Label();
@@ -34,7 +22,15 @@
             this.checkBoxStartup = new System.Windows.Forms.CheckBox();
             this.dateTimePickerEnd = new System.Windows.Forms.DateTimePicker();
             this.labelEnd = new System.Windows.Forms.Label();
+
+            // **New Controls**
+            this.numericUpDownRestrictionPeriod = new System.Windows.Forms.NumericUpDown();
+            this.labelRestrictionPeriod = new System.Windows.Forms.Label();
+            this.labelLastChangeTime = new System.Windows.Forms.Label();
+
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownRestrictionPeriod)).BeginInit();
             this.SuspendLayout();
+
             // 
             // labelStart
             // 
@@ -94,6 +90,51 @@
             this.labelEnd.Size = new System.Drawing.Size(82, 16);
             this.labelEnd.TabIndex = 0;
             this.labelEnd.Text = "وقت انتهاء النوم";
+
+            // **Configure numericUpDownRestrictionPeriod**
+            // 
+            // numericUpDownRestrictionPeriod
+            // 
+            this.numericUpDownRestrictionPeriod.Location = new System.Drawing.Point(15, 160);
+            this.numericUpDownRestrictionPeriod.Minimum = new decimal(new int[] {
+                0,
+                0,
+                0,
+                0});
+            this.numericUpDownRestrictionPeriod.Maximum = new decimal(new int[] {
+                24,
+                0,
+                0,
+                0});
+            this.numericUpDownRestrictionPeriod.Name = "numericUpDownRestrictionPeriod";
+            this.numericUpDownRestrictionPeriod.Size = new System.Drawing.Size(200, 22);
+            this.numericUpDownRestrictionPeriod.TabIndex = 5;
+            this.numericUpDownRestrictionPeriod.Value = new decimal(new int[] {
+                0,
+                0,
+                0,
+                0});
+
+            // 
+            // labelRestrictionPeriod
+            // 
+            this.labelRestrictionPeriod.AutoSize = true;
+            this.labelRestrictionPeriod.Location = new System.Drawing.Point(12, 141);
+            this.labelRestrictionPeriod.Name = "labelRestrictionPeriod";
+            this.labelRestrictionPeriod.Size = new System.Drawing.Size(147, 16);
+            this.labelRestrictionPeriod.TabIndex = 6;
+            this.labelRestrictionPeriod.Text = "فترة القيود (بالساعات):";
+
+            // 
+            // labelLastChangeTime
+            // 
+            this.labelLastChangeTime.AutoSize = true;
+            this.labelLastChangeTime.Location = new System.Drawing.Point(12, 190);
+            this.labelLastChangeTime.Name = "labelLastChangeTime";
+            this.labelLastChangeTime.Size = new System.Drawing.Size(176, 16);
+            this.labelLastChangeTime.TabIndex = 7;
+            this.labelLastChangeTime.Text = "لم يتم تعديل الإعدادات بعد.";
+
             // 
             // Form1
             // 
@@ -113,16 +154,27 @@
             this.ResumeLayout(false);
             this.PerformLayout();
 
+            // **Add new controls to the form**
+            this.Controls.Add(this.numericUpDownRestrictionPeriod);
+            this.Controls.Add(this.labelRestrictionPeriod);
+            this.Controls.Add(this.labelLastChangeTime);
+
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownRestrictionPeriod)).EndInit();
+            this.ResumeLayout(false);
+            this.PerformLayout();
         }
 
         #endregion
-
         private System.Windows.Forms.Label labelStart;
         private System.Windows.Forms.DateTimePicker dateTimePickerStart;
         private System.Windows.Forms.Button buttonSaveSettings;
         private System.Windows.Forms.CheckBox checkBoxStartup;
         private System.Windows.Forms.DateTimePicker dateTimePickerEnd;
         private System.Windows.Forms.Label labelEnd;
+
+        // **Declare new controls**
+        private System.Windows.Forms.NumericUpDown numericUpDownRestrictionPeriod;
+        private System.Windows.Forms.Label labelRestrictionPeriod;
+        private System.Windows.Forms.Label labelLastChangeTime;
     }
 }
-
