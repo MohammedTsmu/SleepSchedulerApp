@@ -237,9 +237,41 @@ namespace SleepSchedulerApp
             }
             else
             {
-                LogEvent("Countdown before sleep canceled by the user. No further action taken.");
+                LogEvent("Countdown before sleep canceled by the user. Will retry in 5 minutes.");
+
+                // Dispose existing pre-sleep retry timer
+                preSleepTimer?.Stop();
+                preSleepTimer?.Dispose();
+
+                // Set up a retry timer for pre-sleep countdown
+                preSleepTimer = new Timer
+                {
+                    Interval = 5 * 60 * 1000 // Retry in 5 minutes
+                };
+
+                preSleepTimer.Tick += (sender, e) =>
+                {
+                    preSleepTimer.Stop();
+                    preSleepTimer.Dispose();
+
+                    DateTime now = DateTime.Now;
+                    DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
+
+                    if (now < todayStart)
+                    {
+                        LogEvent("Retrying pre-sleep countdown.");
+                        ShowCountdownBeforeSleep();
+                    }
+                    else
+                    {
+                        LogEvent("Pre-sleep retry skipped as sleep time has started.");
+                    }
+                };
+
+                preSleepTimer.Start();
             }
         }
+
 
 
 
