@@ -8,15 +8,25 @@ namespace SleepSchedulerApp
         private int countdownTime;
         private Timer countdownTimer;
 
-        // Modify the constructor to accept the 'cancellable' parameter
         public CountdownForm(int seconds, bool cancellable = true)
         {
             InitializeComponent();
+            this.TopMost = true;
+
+            // Optional UI settings
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.ControlBox = false;
+
             countdownTime = seconds;
 
             // Use the 'cancellable' parameter to control the Cancel button
             buttonCancel.Enabled = cancellable;
             buttonCancel.Visible = cancellable;
+
+            // Initialize label with the countdown message
+            UpdateCountdownLabel();
 
             countdownTimer = new Timer
             {
@@ -24,14 +34,12 @@ namespace SleepSchedulerApp
             };
             countdownTimer.Tick += CountdownTimer_Tick;
             countdownTimer.Start();
-
-            UpdateLabel();
         }
 
         private void CountdownTimer_Tick(object sender, EventArgs e)
         {
             countdownTime--;
-            UpdateLabel();
+            UpdateCountdownLabel();
 
             if (countdownTime <= 0)
             {
@@ -41,9 +49,9 @@ namespace SleepSchedulerApp
             }
         }
 
-        private void UpdateLabel()
+        private void UpdateCountdownLabel()
         {
-            labelCountdown.Text = $"Your computer will shut down in {countdownTime} seconds.";
+            labelCountdown.Text = $"The computer will shut down in {countdownTime} seconds. Please save your work immediately.";
         }
 
         private void buttonCancel_Click(object sender, EventArgs e)

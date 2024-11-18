@@ -244,13 +244,28 @@ namespace SleepSchedulerApp
         //    }
         //}
 
+        //private void ShutdownComputer()
+        //{
+        //    try
+        //    {
+        //        // Inform the user
+        //        MessageBox.Show("The computer will shut down now. Please save all your work immediately.", "Shutdown", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+        //        LogEvent("Attempting to shutdown the computer.");
+        //        System.Diagnostics.Process.Start("shutdown", "/s /f /t 0");
+        //        LogEvent("Computer shutdown command issued successfully.");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        LogEvent($"Failed to shutdown the computer: {ex.Message}");
+        //        MessageBox.Show($"Failed to shutdown the computer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        //    }
+        //}
+
         private void ShutdownComputer()
         {
             try
             {
-                // Inform the user
-                MessageBox.Show("The computer will shut down now. Please save all your work immediately.", "Shutdown", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
                 LogEvent("Attempting to shutdown the computer.");
                 System.Diagnostics.Process.Start("shutdown", "/s /f /t 0");
                 LogEvent("Computer shutdown command issued successfully.");
@@ -261,6 +276,25 @@ namespace SleepSchedulerApp
                 MessageBox.Show($"Failed to shutdown the computer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+
+        //private void LogEvent(string message)
+        //{
+        //    try
+        //    {
+        //        string logDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        //        string logFilePath = System.IO.Path.Combine(logDirectory, "SleepSchedulerLog.txt");
+
+        //        using (System.IO.StreamWriter writer = new System.IO.StreamWriter(logFilePath, true))
+        //        {
+        //            writer.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss}: {message}");
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show($"Failed to log event: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        //    }
+        //}
 
         private void LogEvent(string message)
         {
@@ -274,11 +308,12 @@ namespace SleepSchedulerApp
                     writer.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss}: {message}");
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                MessageBox.Show($"Failed to log event: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Optionally, you can ignore logging failures
             }
         }
+
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
