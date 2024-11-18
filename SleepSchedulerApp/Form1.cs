@@ -210,16 +210,28 @@ namespace SleepSchedulerApp
             }
         }
 
+        //private void ShowCountdownAndShutdown()
+        //{
+        //    LogEvent("Sleep time has started. Preparing to lock the computer.");
+
+        //    // Show a non-cancellable countdown
+        //    CountdownForm countdownForm = new CountdownForm(10, false);
+        //    countdownForm.ShowDialog();
+
+        //    LockComputer();
+        //}
+
         private void ShowCountdownAndShutdown()
         {
-            LogEvent("Sleep time has started. Preparing to lock the computer.");
+            LogEvent("Sleep time has started. Preparing to shut down the computer.");
 
             // Show a non-cancellable countdown
             CountdownForm countdownForm = new CountdownForm(10, false);
             countdownForm.ShowDialog();
 
-            LockComputer();
+            ShutdownComputer();
         }
+
 
         private void LockComputer()
         {
@@ -235,14 +247,32 @@ namespace SleepSchedulerApp
             }
         }
 
+        //private void ShutdownComputer()
+        //{
+        //    try
+        //    {
+        //        LogEvent("Attempting to shutdown the computer.");
+        //        //System.Diagnostics.Process.Start("shutdown", "/s /t 0");
+        //        System.Diagnostics.Process.Start("shutdown", "/s /f /t 0");
+
+        //        LogEvent("Computer shutdown command issued successfully.");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        LogEvent($"Failed to shutdown the computer: {ex.Message}");
+        //        MessageBox.Show($"Failed to shutdown the computer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        //    }
+        //}
+
         private void ShutdownComputer()
         {
             try
             {
-                LogEvent("Attempting to shutdown the computer.");
-                //System.Diagnostics.Process.Start("shutdown", "/s /t 0");
-                System.Diagnostics.Process.Start("shutdown", "/s /f /t 0");
+                // Inform the user
+                MessageBox.Show("The computer will shut down now. Please save all your work immediately.", "Shutdown", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
+                LogEvent("Attempting to shutdown the computer.");
+                System.Diagnostics.Process.Start("shutdown", "/s /f /t 0");
                 LogEvent("Computer shutdown command issued successfully.");
             }
             catch (Exception ex)
@@ -251,6 +281,7 @@ namespace SleepSchedulerApp
                 MessageBox.Show($"Failed to shutdown the computer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
 
         private void LogEvent(string message)
         {
