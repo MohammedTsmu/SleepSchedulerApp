@@ -243,10 +243,6 @@ namespace SleepSchedulerApp
                 //System.Diagnostics.Process.Start("shutdown", "/s /t 0");
                 System.Diagnostics.Process.Start("shutdown", "/s /f /t 0");
 
-
-                // Remove or comment out the CreateTask invocation
-                //CreateTask("ShutdownPC", selectedStartTime, @"C:\Windows\System32\shutdown.exe", "/s /f /t 0");
-
                 LogEvent("Computer shutdown command issued successfully.");
             }
             catch (Exception ex)
