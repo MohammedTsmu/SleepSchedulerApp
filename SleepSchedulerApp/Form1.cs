@@ -1,6 +1,10 @@
 ﻿using Microsoft.Win32.TaskScheduler;
 using System;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
+using Microsoft.Win32;
+
+
 
 namespace SleepSchedulerApp
 {
@@ -15,6 +19,15 @@ namespace SleepSchedulerApp
         private Timer shutdownTimer;
         private Timer retryTimer;
 
+
+        // Import the LockWorkStation function
+        [DllImport("user32.dll")]
+        public static extern bool LockWorkStation();
+
+        // Optionally, import SetSuspendState if you choose to sleep the computer
+        [DllImport("powrprof.dll", SetLastError = true)]
+        private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
+
         public Form1()
         {
             InitializeComponent();
@@ -27,8 +40,50 @@ namespace SleepSchedulerApp
             dateTimePickerEnd.Value = selectedEndTime;
             checkBoxStartup.Checked = Properties.Settings.Default.RunOnStartup;
 
+            // Subscribe to the SessionSwitch event
+            SystemEvents.SessionSwitch += new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
+
+            // Optionally, handle FormClosing to prevent closing during sleep time
+            this.FormClosing += Form1_FormClosing;
+
+            // Subscribe to the FormClosed event
+            this.FormClosed += Form1_FormClosed;
+
             CheckSleepTime();
         }
+
+        //protected override void Dispose(bool disposing)
+        //{
+        //    if (disposing)
+        //    {
+        //        SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+        //    }
+        //    base.Dispose(disposing);
+        //}
+
+        //private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
+        //{
+        //    if (e.Reason == SessionSwitchReason.SessionUnlock)
+        //    {
+        //        LogEvent("User has unlocked the session. Checking sleep time.");
+
+        //        // Check if it's still sleep time
+        //        DateTime now = DateTime.Now;
+        //        DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
+        //        DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+
+        //        if (now >= todayStart && now <= todayEnd)
+        //        {
+        //            // It's still sleep time; enforce the lock again
+        //            ShowCountdownAndShutdown();
+        //        }
+        //        else
+        //        {
+        //            LogEvent("Sleep time has ended. No action taken.");
+        //        }
+        //    }
+        //}
+
 
         private void DateTimePickerStart_ValueChanged(object sender, EventArgs e)
         {
@@ -148,34 +203,13 @@ namespace SleepSchedulerApp
 
             if (now >= todayStart && now <= todayEnd)
             {
-                LogEvent("Current time is within sleep time. Preparing to shutdown the computer.");
+                LogEvent("Current time is within sleep time. Enforcing sleep policy.");
                 ShowCountdownAndShutdown();
             }
             else if (now < todayStart)
             {
                 TimeSpan timeUntilSleep = todayStart - now;
-                //if (timeUntilSleep.TotalMilliseconds > 60 * 1000)
-                //{
-                //    // مؤقت لعرض العد التنازلي قبل النوم بدقيقة
-                //    Timer preSleepTimer = new Timer
-                //    {
-                //        Interval = (int)timeUntilSleep.TotalMilliseconds - (60 * 1000)
-                //    };
 
-                //    preSleepTimer.Tick += (sender, e) =>
-                //    {
-                //        preSleepTimer.Stop();
-                //        preSleepTimer.Dispose();
-                //        LogEvent("One minute before sleep time. Showing countdown window.");
-                //        ShowCountdownBeforeSleep();
-                //    };
-                //    preSleepTimer.Start();
-                //}
-                //else
-                //{
-                //    LogEvent("Less than one minute to sleep time. Showing countdown immediately.");
-                //    ShowCountdownBeforeSleep();
-                //}
                 if (timeUntilSleep.TotalMilliseconds > 60 * 1000)
                 {
                     preSleepTimer = new Timer
@@ -207,6 +241,8 @@ namespace SleepSchedulerApp
                 LogEvent("Current time is outside sleep time. No action taken.");
             }
         }
+
+
 
         private void ShowCountdownBeforeSleep()
         {
@@ -276,76 +312,119 @@ namespace SleepSchedulerApp
 
 
 
+        //private void ShowCountdownAndShutdown()
+        //{
+        //    if (isRetrying)
+        //    {
+        //        LogEvent("Another retry is already in progress. Skipping this attempt.");
+        //        return;
+        //    }
+
+        //    CountdownForm countdownForm = new CountdownForm(10);
+        //    DialogResult result = countdownForm.ShowDialog();
+
+        //    if (result == DialogResult.OK)
+        //    {
+        //        LogEvent("Countdown finished during sleep time. Shutting down the computer.");
+        //        ShutdownComputer();
+        //        isRetrying = false;
+        //    }
+        //    else
+        //    {
+        //        LogEvent("Countdown during sleep time canceled by the user. Retrying in 1 minute.");
+        //        isRetrying = true;
+
+        //        // Dispose existing retry timer
+        //        retryTimer?.Stop();
+        //        retryTimer?.Dispose();
+
+        //        retryTimer = new Timer
+        //        {
+        //            Interval = 1 * 60 * 1000
+        //        };
+
+        //        retryTimer.Tick += (sender, e) =>
+        //        {
+        //            retryTimer.Stop();
+        //            retryTimer.Dispose();
+        //            isRetrying = false;
+
+        //            DateTime now = DateTime.Now;
+        //            DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
+        //            DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+
+        //            if (now >= todayStart && now <= todayEnd)
+        //            {
+        //                LogEvent("Retrying to shutdown the computer after cancellation.");
+        //                ShowCountdownAndShutdown();
+        //            }
+        //            else
+        //            {
+        //                LogEvent("Retry skipped as the current time is outside sleep time.");
+        //            }
+        //        };
+        //        retryTimer.Start();
+        //    }
+        //}
+
+
         private void ShowCountdownAndShutdown()
         {
-            if (isRetrying)
+            LogEvent("Sleep time has started. Preparing to lock the computer.");
+
+            // Show a non-cancellable countdown
+            CountdownForm countdownForm = new CountdownForm(10, false);
+            countdownForm.ShowDialog();
+
+            LockComputer();
+        }
+
+        // If using SleepComputer instead
+        private void SleepComputer()
+        {
+            try
             {
-                LogEvent("Another retry is already in progress. Skipping this attempt.");
-                return;
+                LogEvent("Putting the computer to sleep.");
+                SetSuspendState(false, true, true);
             }
-
-            CountdownForm countdownForm = new CountdownForm(10);
-            DialogResult result = countdownForm.ShowDialog();
-
-            if (result == DialogResult.OK)
+            catch (Exception ex)
             {
-                LogEvent("Countdown finished during sleep time. Shutting down the computer.");
-                ShutdownComputer();
-                isRetrying = false;
-            }
-            else
-            {
-                LogEvent("Countdown during sleep time canceled by the user. Retrying in 1 minute.");
-                isRetrying = true;
-
-                // Dispose existing retry timer
-                retryTimer?.Stop();
-                retryTimer?.Dispose();
-
-                retryTimer = new Timer
-                {
-                    Interval = 1 * 60 * 1000
-                };
-
-                retryTimer.Tick += (sender, e) =>
-                {
-                    retryTimer.Stop();
-                    retryTimer.Dispose();
-                    isRetrying = false;
-
-                    DateTime now = DateTime.Now;
-                    DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
-                    DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
-
-                    if (now >= todayStart && now <= todayEnd)
-                    {
-                        LogEvent("Retrying to shutdown the computer after cancellation.");
-                        ShowCountdownAndShutdown();
-                    }
-                    else
-                    {
-                        LogEvent("Retry skipped as the current time is outside sleep time.");
-                    }
-                };
-                retryTimer.Start();
+                LogEvent($"Failed to put the computer to sleep: {ex.Message}");
+                MessageBox.Show($"Failed to put the computer to sleep: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-
+        private void LockComputer()
+        {
+            try
+            {
+                LogEvent("Locking the computer.");
+                LockWorkStation();
+            }
+            catch (Exception ex)
+            {
+                LogEvent($"Failed to lock the computer: {ex.Message}");
+                MessageBox.Show($"Failed to lock the computer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
 
         private void ShutdownComputer()
         {
             try
             {
                 LogEvent("Attempting to shutdown the computer.");
-                System.Diagnostics.Process.Start(@"C:\Windows\System32\shutdown.exe", "/s /f /t 0");
-                LogEvent("Computer shutdown successfully.");
+                System.Diagnostics.Process.Start("shutdown", "/s /t 0");
+                LogEvent("Computer shutdown command issued successfully.");
             }
             catch (Exception ex)
             {
                 LogEvent($"Failed to shutdown the computer: {ex.Message}");
+                MessageBox.Show($"Failed to shutdown the computer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+
+
 
 
         private void LogEvent(string message)
@@ -365,5 +444,68 @@ namespace SleepSchedulerApp
                 MessageBox.Show($"Failed to log event: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        //private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        //{
+        //    DateTime now = DateTime.Now;
+        //    DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
+        //    DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+
+        //    if (now >= todayStart && now <= todayEnd)
+        //    {
+        //        // Prevent closing during sleep time
+        //        e.Cancel = true;
+        //        MessageBox.Show("You cannot close the application during sleep time.", "Sleep Scheduler", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        //    }
+        //}
+
+        //private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        //{
+        //    SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+        //}
+
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+        }
+
+        private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
+        {
+            if (e.Reason == SessionSwitchReason.SessionUnlock)
+            {
+                LogEvent("User has unlocked the session. Checking sleep time.");
+
+                DateTime now = DateTime.Now;
+                DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
+                DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+
+                if (now >= todayStart && now <= todayEnd)
+                {
+                    // It's still sleep time; enforce the lock
+                    ShowCountdownAndShutdown();
+                }
+                else
+                {
+                    LogEvent("Sleep time has ended. No action taken.");
+                }
+            }
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            DateTime now = DateTime.Now;
+            DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
+            DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+
+            if (now >= todayStart && now <= todayEnd)
+            {
+                // Prevent closing during sleep time
+                e.Cancel = true;
+                MessageBox.Show("You cannot close the application during sleep time.", "Sleep Scheduler", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+
+
     }
 }
