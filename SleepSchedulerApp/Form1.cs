@@ -10,6 +10,11 @@ namespace SleepSchedulerApp
         private DateTime selectedEndTime;
         private bool isRetrying = false;
 
+        // Declare timers at class level
+        private Timer preSleepTimer;
+        private Timer shutdownTimer;
+        private Timer retryTimer;
+
         public Form1()
         {
             InitializeComponent();
@@ -39,6 +44,24 @@ namespace SleepSchedulerApp
             Properties.Settings.Default.Save();
         }
 
+        //private void checkBoxStartup_CheckedChanged(object sender, EventArgs e)
+        //{
+        //    Properties.Settings.Default.RunOnStartup = checkBoxStartup.Checked;
+        //    Properties.Settings.Default.Save();
+
+        //    string appPath = Application.ExecutablePath;
+        //    using (Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
+        //    {
+        //        if (checkBoxStartup.Checked)
+        //        {
+        //            key.SetValue("SleepSchedulerApp", $"\"{appPath}\"");
+        //        }
+        //        else
+        //        {
+        //            key.DeleteValue("SleepSchedulerApp", false);
+        //        }
+        //    }
+        //}
         private void checkBoxStartup_CheckedChanged(object sender, EventArgs e)
         {
             Properties.Settings.Default.RunOnStartup = checkBoxStartup.Checked;
@@ -58,6 +81,7 @@ namespace SleepSchedulerApp
             }
         }
 
+
         private void buttonSaveSettings_Click(object sender, EventArgs e)
         {
             MessageBox.Show($"Start Time: {selectedStartTime}\nEnd Time: {selectedEndTime}");
@@ -70,7 +94,11 @@ namespace SleepSchedulerApp
 
             CreateTask("ShutdownPC", selectedStartTime, @"C:\Windows\System32\shutdown.exe", "/s /f /t 0");
             MessageBox.Show("Settings saved successfully.");
+
+            // Call CheckSleepTime to set up new timers
+            CheckSleepTime();
         }
+
 
         private void CreateTask(string taskName, DateTime triggerTime, string executablePath, string arguments)
         {
@@ -110,6 +138,10 @@ namespace SleepSchedulerApp
 
         private void CheckSleepTime()
         {
+            // Dispose existing timers
+            preSleepTimer?.Stop();
+            preSleepTimer?.Dispose();
+
             DateTime now = DateTime.Now;
             DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
             DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
@@ -117,31 +149,57 @@ namespace SleepSchedulerApp
             if (now >= todayStart && now <= todayEnd)
             {
                 LogEvent("Current time is within sleep time. Preparing to shutdown the computer.");
-                ShowCountdownAndLock();
+                ShowCountdownAndShutdown();
             }
             else if (now < todayStart)
             {
                 TimeSpan timeUntilSleep = todayStart - now;
+                //if (timeUntilSleep.TotalMilliseconds > 60 * 1000)
+                //{
+                //    // مؤقت لعرض العد التنازلي قبل النوم بدقيقة
+                //    Timer preSleepTimer = new Timer
+                //    {
+                //        Interval = (int)timeUntilSleep.TotalMilliseconds - (60 * 1000)
+                //    };
+
+                //    preSleepTimer.Tick += (sender, e) =>
+                //    {
+                //        preSleepTimer.Stop();
+                //        preSleepTimer.Dispose();
+                //        LogEvent("One minute before sleep time. Showing countdown window.");
+                //        ShowCountdownBeforeSleep();
+                //    };
+                //    preSleepTimer.Start();
+                //}
+                //else
+                //{
+                //    LogEvent("Less than one minute to sleep time. Showing countdown immediately.");
+                //    ShowCountdownBeforeSleep();
+                //}
                 if (timeUntilSleep.TotalMilliseconds > 60 * 1000)
                 {
-                    Timer countdownTimer = new Timer
+                    preSleepTimer = new Timer
                     {
                         Interval = (int)timeUntilSleep.TotalMilliseconds - (60 * 1000)
                     };
 
-                    countdownTimer.Tick += (sender, e) =>
+                    preSleepTimer.Tick += (sender, e) =>
                     {
-                        countdownTimer.Stop();
-                        countdownTimer.Dispose();
+                        preSleepTimer.Stop();
+                        preSleepTimer.Dispose();
                         LogEvent("One minute before sleep time. Showing countdown window.");
-                        ShowCountdownAndLock();
+                        ShowCountdownBeforeSleep();
                     };
-                    countdownTimer.Start();
+                    preSleepTimer.Start();
+                }
+                else if (timeUntilSleep.TotalMilliseconds > 0)
+                {
+                    LogEvent("Less than one minute to sleep time. Showing countdown immediately.");
+                    ShowCountdownBeforeSleep();
                 }
                 else
                 {
-                    LogEvent("Less than one minute to sleep time. Showing countdown immediately.");
-                    ShowCountdownAndLock();
+                    LogEvent("Current time is outside sleep time. No action taken.");
                 }
             }
             else
@@ -150,7 +208,43 @@ namespace SleepSchedulerApp
             }
         }
 
-        private void ShowCountdownAndLock()
+        private void ShowCountdownBeforeSleep()
+        {
+            CountdownForm countdownForm = new CountdownForm(10); // 10-second countdown
+            DialogResult result = countdownForm.ShowDialog();
+
+            if (result == DialogResult.OK)
+            {
+                LogEvent("Countdown before sleep finished. Preparing to shutdown.");
+
+                // Dispose existing shutdown timer
+                shutdownTimer?.Stop();
+                shutdownTimer?.Dispose();
+
+                shutdownTimer = new Timer
+                {
+                    Interval = 2000 // 2-second delay
+                };
+
+                shutdownTimer.Tick += (sender, e) =>
+                {
+                    shutdownTimer.Stop();
+                    shutdownTimer.Dispose();
+                    ShutdownComputer();
+                };
+
+                shutdownTimer.Start();
+            }
+            else
+            {
+                LogEvent("Countdown before sleep canceled by the user. No further action taken.");
+            }
+        }
+
+
+
+
+        private void ShowCountdownAndShutdown()
         {
             if (isRetrying)
             {
@@ -163,19 +257,24 @@ namespace SleepSchedulerApp
 
             if (result == DialogResult.OK)
             {
-                LogEvent("Countdown finished. Shutting down the computer.");
+                LogEvent("Countdown finished during sleep time. Shutting down the computer.");
                 ShutdownComputer();
                 isRetrying = false;
             }
             else
             {
-                LogEvent("Countdown canceled by the user. Retrying in 1 minute.");
+                LogEvent("Countdown during sleep time canceled by the user. Retrying in 1 minute.");
                 isRetrying = true;
 
-                Timer retryTimer = new Timer
+                // Dispose existing retry timer
+                retryTimer?.Stop();
+                retryTimer?.Dispose();
+
+                retryTimer = new Timer
                 {
                     Interval = 1 * 60 * 1000
                 };
+
                 retryTimer.Tick += (sender, e) =>
                 {
                     retryTimer.Stop();
@@ -189,7 +288,7 @@ namespace SleepSchedulerApp
                     if (now >= todayStart && now <= todayEnd)
                     {
                         LogEvent("Retrying to shutdown the computer after cancellation.");
-                        ShowCountdownAndLock();
+                        ShowCountdownAndShutdown();
                     }
                     else
                     {
@@ -199,6 +298,8 @@ namespace SleepSchedulerApp
                 retryTimer.Start();
             }
         }
+
+
 
         private void ShutdownComputer()
         {
@@ -213,6 +314,7 @@ namespace SleepSchedulerApp
                 LogEvent($"Failed to shutdown the computer: {ex.Message}");
             }
         }
+
 
         private void LogEvent(string message)
         {
