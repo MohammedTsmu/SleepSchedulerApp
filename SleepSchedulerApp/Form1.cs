@@ -22,7 +22,6 @@ namespace SleepSchedulerApp
             dateTimePickerEnd.Value = selectedEndTime;
             checkBoxStartup.Checked = Properties.Settings.Default.RunOnStartup;
 
-            // Check sleep time on application startup
             CheckSleepTime();
         }
 
@@ -69,15 +68,9 @@ namespace SleepSchedulerApp
                 return;
             }
 
-            // إنشاء مهمة لإيقاف التشغيل عند وقت النوم
             CreateTask("ShutdownPC", selectedStartTime, @"C:\Windows\System32\shutdown.exe", "/s /f /t 0");
-
-            // يمكنك أيضًا إنشاء مهمة أخرى عند وقت الاستيقاظ إذا لزم الأمر
-            // CreateTask("RestartPC", selectedEndTime, @"C:\Windows\System32\shutdown.exe", "/r /f /t 0");
-
             MessageBox.Show("Settings saved successfully.");
         }
-
 
         private void CreateTask(string taskName, DateTime triggerTime, string executablePath, string arguments)
         {
@@ -123,7 +116,7 @@ namespace SleepSchedulerApp
 
             if (now >= todayStart && now <= todayEnd)
             {
-                LogEvent("Current time is within sleep time. Preparing to lock the computer.");
+                LogEvent("Current time is within sleep time. Preparing to shutdown the computer.");
                 ShowCountdownAndLock();
             }
             else if (now < todayStart)
@@ -207,13 +200,12 @@ namespace SleepSchedulerApp
             }
         }
 
-
         private void ShutdownComputer()
         {
             try
             {
                 LogEvent("Attempting to shutdown the computer.");
-                System.Diagnostics.Process.Start(@"C:\Windows\System32\shutdown.exe", "/s /f /t 0"); // إيقاف التشغيل فورًا
+                System.Diagnostics.Process.Start(@"C:\Windows\System32\shutdown.exe", "/s /f /t 0");
                 LogEvent("Computer shutdown successfully.");
             }
             catch (Exception ex)
@@ -221,7 +213,6 @@ namespace SleepSchedulerApp
                 LogEvent($"Failed to shutdown the computer: {ex.Message}");
             }
         }
-
 
         private void LogEvent(string message)
         {
