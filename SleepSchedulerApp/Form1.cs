@@ -16,11 +16,6 @@ namespace SleepSchedulerApp
         private Timer preSleepTimer;
         private Timer shutdownTimer;
 
-
-        // Import the LockWorkStation function
-        [DllImport("user32.dll")]
-        public static extern bool LockWorkStation();
-
         public Form1()
         {
             InitializeComponent();
@@ -232,21 +227,6 @@ namespace SleepSchedulerApp
             ShutdownComputer();
         }
 
-
-        private void LockComputer()
-        {
-            try
-            {
-                LogEvent("Locking the computer.");
-                LockWorkStation();
-            }
-            catch (Exception ex)
-            {
-                LogEvent($"Failed to lock the computer: {ex.Message}");
-                MessageBox.Show($"Failed to lock the computer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
         //private void ShutdownComputer()
         //{
         //    try
@@ -282,7 +262,6 @@ namespace SleepSchedulerApp
             }
         }
 
-
         private void LogEvent(string message)
         {
             try
@@ -305,7 +284,7 @@ namespace SleepSchedulerApp
         {
             SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
         }
-        
+
         private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
         {
             if (e.Reason == SessionSwitchReason.SessionUnlock)
@@ -318,7 +297,7 @@ namespace SleepSchedulerApp
 
                 if (now >= todayStart && now <= todayEnd)
                 {
-                    // It's still sleep time; enforce the lock
+                    // It's still sleep time; enforcing shutdown
                     ShowCountdownAndShutdown();
                 }
                 else
