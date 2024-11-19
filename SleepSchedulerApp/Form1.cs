@@ -17,6 +17,12 @@ namespace SleepSchedulerApp
         private Timer restrictionCheckTimer;
         private Timer statusClearTimer;
 
+        private NotifyIcon trayIcon;
+        private ContextMenuStrip trayMenu;
+
+        private bool isRestoringWindow = false; // Flag to prevent recursive calls
+
+
         public Form1()
         {
             InitializeComponent();
@@ -81,6 +87,15 @@ namespace SleepSchedulerApp
 
             // Subscribe to the FormClosed event
             this.FormClosed += Form1_FormClosed;
+
+            InitializeTrayIcon();
+            ConfigureFormBehavior();
+
+            this.Opacity = 0; // Make the form invisible
+            this.ShowInTaskbar = false;
+            this.Visible = false;
+
+            trayIcon.Text = "Sleep Scheduler: Double-click to open settings";
 
             CheckSleepTime();
         }
@@ -497,6 +512,145 @@ namespace SleepSchedulerApp
         private void ShowAboutDialog()
         {
             MessageBox.Show("تطبيق جدولة النوم\nالإصدار 1.0.0\nحقوق النشر © 2023 \nالمطور د.محمد قاسم", "حول التطبيق", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        /// <summary>
+        /// Initializes the system tray icon and menu.
+        /// </summary>
+        private void InitializeTrayIcon()
+        {
+            // Create tray menu with options
+            trayMenu = new ContextMenuStrip();
+            trayMenu.Items.Add("Open Settings", null, (s, e) =>
+            {
+                try
+                {
+                    ShowMainWindow();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to open settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            });
+
+            // Configure tray icon
+            trayIcon = new NotifyIcon
+            {
+                Text = "Sleep Scheduler",
+                Icon = Properties.Resources.sleep, // Ensure this resource exists
+                ContextMenuStrip = trayMenu,
+                Visible = true
+            };
+
+
+
+            // Handle double-click to open settings
+            trayIcon.DoubleClick += (s, e) => ShowMainWindow();
+        }
+
+        /// <summary>
+        /// Configures the behavior of the main window on startup and minimize/close actions.
+        /// </summary>
+        private void ConfigureFormBehavior()
+        {
+            // Start minimized to tray
+            this.WindowState = FormWindowState.Minimized;
+            this.ShowInTaskbar = false;
+            this.Visible = false;
+
+            // Override form closing and resizing behavior
+            this.FormClosing += (s, e) =>
+            {
+                e.Cancel = true; // Cancel the close action
+                MinimizeToTray();
+            };
+
+            this.Resize += (s, e) =>
+            {
+                if (this.WindowState == FormWindowState.Minimized)
+                {
+                    MinimizeToTray();
+                }
+            };
+        }
+
+        /// <summary>
+        /// Shows the main application window.
+        /// </summary>
+        // Restore opacity when showing the form
+        private void ShowMainWindow()
+        {
+            if (isRestoringWindow) return;
+
+            try
+            {
+                isRestoringWindow = true;
+                this.Invoke((MethodInvoker)delegate
+                {
+                    if (this.WindowState == FormWindowState.Minimized)
+                        this.WindowState = FormWindowState.Normal; // Ensure it's not minimized
+
+                    this.Opacity = 1; // Restore visibility
+                    this.Visible = true;
+                    this.ShowInTaskbar = true;
+                    this.BringToFront();
+                });
+            }
+            finally
+            {
+                isRestoringWindow = false;
+            }
+        }
+
+
+
+        /// <summary>
+        /// Minimizes the application to the system tray.
+        /// </summary>
+        private void MinimizeToTray()
+        {
+            if (isRestoringWindow) return; // Prevent recursive calls
+
+            try
+            {
+                this.Invoke((MethodInvoker)delegate
+                {
+                    this.ShowInTaskbar = false;
+                    this.Visible = false;
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred while minimizing to the tray: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Exits the application and removes the tray icon.
+        /// </summary>
+        private void ExitApplication()
+        {
+            trayIcon.Visible = false;
+            trayIcon.Dispose(); // Explicitly dispose of the NotifyIcon
+            Application.Exit();
+        }
+
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            // Prevent closing and minimize to tray instead
+            e.Cancel = true;
+            MinimizeToTray();
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                MinimizeToTray();
+            }
         }
     }
 }
