@@ -106,12 +106,19 @@ namespace SleepSchedulerApp
             selectedStartTime = dateTimePickerStart.Value;
             selectedEndTime = dateTimePickerEnd.Value;
 
-            // Validate that end time is after start time
-            if (selectedEndTime <= selectedStartTime)
+            //// Validate that end time is after start time
+            //if (selectedEndTime <= selectedStartTime)
+            //{
+            //    MessageBox.Show("يجب أن يكون وقت انتهاء النوم بعد وقت بدء النوم.", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //    return;
+            //}
+            // Adjust validation to handle overnight sleep times
+            if (selectedEndTime <= selectedStartTime && selectedEndTime.TimeOfDay <= selectedStartTime.TimeOfDay)
             {
                 MessageBox.Show("يجب أن يكون وقت انتهاء النوم بعد وقت بدء النوم.", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+
 
             // Check if the restriction period has passed
             DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
@@ -194,6 +201,13 @@ namespace SleepSchedulerApp
             DateTime now = DateTime.Now;
             DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
             DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+
+            // Adjust end time if it is before the start time (indicating it is on the next day)
+            if (selectedEndTime < selectedStartTime)
+            {
+                todayEnd = todayEnd.AddDays(1); // End time moves to the next day
+            }
+
 
             if (now >= todayStart && now <= todayEnd)
             {
@@ -413,10 +427,7 @@ namespace SleepSchedulerApp
                 if (now >= restrictionStartTime && now < todayStart)
                 {
                     // Restriction is active: disable controls
-                    numericUpDownRestrictionPeriod.Enabled = false;
-                    dateTimePickerStart.Enabled = false;
-                    dateTimePickerEnd.Enabled = false;
-                    checkBoxStartup.Enabled = false;
+                    DisableControls();
 
                     // Update label to show restriction status
                     labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {todayStart}";
@@ -431,10 +442,7 @@ namespace SleepSchedulerApp
                 else
                 {
                     // Restriction is not active, enable controls
-                    numericUpDownRestrictionPeriod.Enabled = true;
-                    dateTimePickerStart.Enabled = true;
-                    dateTimePickerEnd.Enabled = true;
-                    checkBoxStartup.Enabled = true;
+                    EnableControls();
 
                     // Hide the restriction info label
                     labelRestrictionInfo.Visible = false;
@@ -465,6 +473,21 @@ namespace SleepSchedulerApp
             }
         }
 
+        private void DisableControls()
+        {
+            numericUpDownRestrictionPeriod.Enabled = false;
+            dateTimePickerStart.Enabled = false;
+            dateTimePickerEnd.Enabled = false;
+            checkBoxStartup.Enabled = false;
+        }
+
+        private void EnableControls()
+        {
+            numericUpDownRestrictionPeriod.Enabled = true;
+            dateTimePickerStart.Enabled = true;
+            dateTimePickerEnd.Enabled = true;
+            checkBoxStartup.Enabled = true;
+        }
 
         // Optional: Show About Dialog
         private void ShowAboutDialog()
