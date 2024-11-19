@@ -1,8 +1,7 @@
 ﻿using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
+using System.Drawing;
 using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 
 namespace SleepSchedulerApp
 {
@@ -16,10 +15,21 @@ namespace SleepSchedulerApp
         private Timer shutdownTimer;
 
         private Timer restrictionCheckTimer;
+        private Timer statusClearTimer;
 
         public Form1()
         {
             InitializeComponent();
+
+            // Resize the icon and assign it to the button
+            Icon saveIcon = Properties.Resources.save;
+            int desiredSize = 24; // Adjust to your preferred size
+            Bitmap saveBitmap = new Bitmap(saveIcon.ToBitmap(), new Size(desiredSize, desiredSize));
+            this.buttonSaveSettings.Image = saveBitmap;
+            this.buttonSaveSettings.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.buttonSaveSettings.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.buttonSaveSettings.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
+
 
             // Retrieve saved settings
             selectedStartTime = Properties.Settings.Default.StartTime;
@@ -52,6 +62,15 @@ namespace SleepSchedulerApp
             restrictionCheckTimer.Tick += (s, args) =>
             {
                 DisableControlsIfRestrictionActive();
+            };
+
+            // Initialize the statusClearTimer
+            statusClearTimer = new Timer();
+            statusClearTimer.Interval = 5000; // 5 seconds
+            statusClearTimer.Tick += (s, args) =>
+            {
+                labelStatus.Text = "";
+                statusClearTimer.Stop();
             };
 
             // Check if the restriction period is active and update controls accordingly
@@ -90,7 +109,7 @@ namespace SleepSchedulerApp
             // Validate that end time is after start time
             if (selectedEndTime <= selectedStartTime)
             {
-                MessageBox.Show("يجب أن يكون وقت انتهاء النوم بعد وقت بدء النوم.");
+                MessageBox.Show("يجب أن يكون وقت انتهاء النوم بعد وقت بدء النوم.", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -128,22 +147,29 @@ namespace SleepSchedulerApp
 
             // Update the registry for RunOnStartup
             string appPath = Application.ExecutablePath;
-            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
+            try
             {
-                if (checkBoxStartup.Checked)
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
                 {
-                    key.SetValue("SleepSchedulerApp", $"\"{appPath}\"");
+                    if (checkBoxStartup.Checked)
+                    {
+                        key.SetValue("SleepSchedulerApp", $"\"{appPath}\"");
+                    }
+                    else
+                    {
+                        key.DeleteValue("SleepSchedulerApp", false);
+                    }
                 }
-                else
-                {
-                    key.DeleteValue("SleepSchedulerApp", false);
-                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"خطأ أثناء تحديث إعدادات بدء التشغيل: {ex.Message}", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             // Save all settings
             Properties.Settings.Default.Save();
 
-            MessageBox.Show("تم حفظ الإعدادات بنجاح.");
+            MessageBox.Show("تم حفظ الإعدادات بنجاح.", "نجاح", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             // Update control states based on the new restriction period
             DisableControlsIfRestrictionActive();
@@ -151,10 +177,13 @@ namespace SleepSchedulerApp
             // Update the last change time label
             labelLastChangeTime.Text = $"تم تعديل الإعدادات آخر مرة في: {DateTime.Now}";
 
+            // Set status message
+            labelStatus.Text = "تم حفظ الإعدادات بنجاح.";
+            statusClearTimer.Start();
+
             // Call CheckSleepTime to set up new timers
             CheckSleepTime();
         }
-
 
         private void CheckSleepTime()
         {
@@ -355,7 +384,16 @@ namespace SleepSchedulerApp
                 // Prevent closing during sleep time
                 e.Cancel = true;
                 MessageBox.Show("لا يمكنك إغلاق التطبيق خلال وقت النوم.", "جدولة النوم", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
+
+            var result = MessageBox.Show("هل أنت متأكد أنك تريد إغلاق التطبيق؟", "تأكيد الإغلاق", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result == DialogResult.No)
+            {
+                e.Cancel = true;
+                return;
+            }
+
             // Save settings on close
             Properties.Settings.Default.Save();
         }
@@ -413,6 +451,9 @@ namespace SleepSchedulerApp
                 dateTimePickerEnd.Enabled = true;
                 checkBoxStartup.Enabled = true;
 
+                // Hide the restriction info label
+                labelRestrictionInfo.Visible = false;
+
                 // Stop the timer since there's no restriction
                 if (restrictionCheckTimer.Enabled)
                 {
@@ -421,5 +462,10 @@ namespace SleepSchedulerApp
             }
         }
 
+        // Optional: Show About Dialog
+        private void ShowAboutDialog()
+        {
+            MessageBox.Show("تطبيق جدولة النوم\nالإصدار 1.0\nحقوق النشر © 2023", "حول التطبيق", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
     }
 }
