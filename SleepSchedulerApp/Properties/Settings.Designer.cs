@@ -81,5 +81,28 @@ namespace SleepSchedulerApp.Properties {
                 this["LastSettingsChangeTime"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public global::System.DateTime LastKnownSystemTime {
+            get {
+                return ((global::System.DateTime)(this["LastKnownSystemTime"]));
+            }
+            set {
+                this["LastKnownSystemTime"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastKnownTimeZoneId {
+            get {
+                return ((string)(this["LastKnownTimeZoneId"]));
+            }
+            set {
+                this["LastKnownTimeZoneId"] = value;
+            }
+        }
     }
 }

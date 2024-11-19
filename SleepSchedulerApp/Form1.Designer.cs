@@ -27,6 +27,9 @@
             this.numericUpDownRestrictionPeriod = new System.Windows.Forms.NumericUpDown();
             this.labelRestrictionPeriod = new System.Windows.Forms.Label();
             this.labelLastChangeTime = new System.Windows.Forms.Label();
+            this.toolTip1 = new System.Windows.Forms.ToolTip();
+            this.labelRestrictionInfo = new System.Windows.Forms.Label();
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
 
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownRestrictionPeriod)).BeginInit();
             this.SuspendLayout();
@@ -135,6 +138,29 @@
             this.labelLastChangeTime.TabIndex = 7;
             this.labelLastChangeTime.Text = "لم يتم تعديل الإعدادات بعد.";
 
+            //
+            // ToolTip
+            //
+            // Set up the delays for the ToolTip.
+            this.toolTip1.AutoPopDelay = 5000;
+            this.toolTip1.InitialDelay = 1000;
+            this.toolTip1.ReshowDelay = 500;
+            // Force the ToolTip text to be displayed whether or not the form is active.
+            this.toolTip1.ShowAlways = true;
+            // Set up the ToolTip text for the controls
+            this.toolTip1.SetToolTip(this.numericUpDownRestrictionPeriod, "مدة الوقت التي لا يمكنك فيها تغيير إعدادات النوم بعد حفظها.");
+
+            //
+            //  label or informational text to explain how the restriction period works.
+            //
+            this.labelRestrictionInfo.AutoSize = true;
+            this.labelRestrictionInfo.Location = new System.Drawing.Point(15, 185);
+            this.labelRestrictionInfo.Name = "labelRestrictionInfo";
+            this.labelRestrictionInfo.Size = new System.Drawing.Size(400, 16);
+            this.labelRestrictionInfo.TabIndex = 8;
+            this.labelRestrictionInfo.Text = "بعد حفظ الإعدادات، لن تتمكن من تغييرها مرة أخرى حتى تنتهي فترة القيود المحددة.";
+            this.Controls.Add(this.labelRestrictionInfo);
+
             // 
             // Form1
             // 
@@ -176,5 +202,7 @@
         private System.Windows.Forms.NumericUpDown numericUpDownRestrictionPeriod;
         private System.Windows.Forms.Label labelRestrictionPeriod;
         private System.Windows.Forms.Label labelLastChangeTime;
+        private System.Windows.Forms.ToolTip toolTip1;
+        private System.Windows.Forms.Label labelRestrictionInfo;
     }
 }
