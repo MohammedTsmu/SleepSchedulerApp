@@ -400,26 +400,29 @@ namespace SleepSchedulerApp
 
         private void DisableControlsIfRestrictionActive()
         {
-            DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
+            DateTime now = DateTime.Now;
+            DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
             int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
 
-            if (savedRestrictionHours > 0 && lastChange > DateTime.MinValue)
+            if (savedRestrictionHours > 0)
             {
-                DateTime restrictionEndTime = lastChange.AddHours(savedRestrictionHours);
+                // Calculate restriction start time: X hours before the sleep start time
+                DateTime restrictionStartTime = todayStart.AddHours(-savedRestrictionHours);
 
-                if (DateTime.Now < restrictionEndTime)
+                // Check if we are currently within the restriction period (before sleep time)
+                if (now >= restrictionStartTime && now < todayStart)
                 {
-                    // Disable controls
+                    // Restriction is active: disable controls
                     numericUpDownRestrictionPeriod.Enabled = false;
                     dateTimePickerStart.Enabled = false;
                     dateTimePickerEnd.Enabled = false;
                     checkBoxStartup.Enabled = false;
 
-                    // Update label to show restriction end time
-                    labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {restrictionEndTime}";
+                    // Update label to show restriction status
+                    labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {todayStart}";
                     labelRestrictionInfo.Visible = true;
 
-                    // Start the timer to re-enable controls when restriction ends
+                    // Start the timer to keep checking for the restriction period
                     if (!restrictionCheckTimer.Enabled)
                     {
                         restrictionCheckTimer.Start();
@@ -427,7 +430,7 @@ namespace SleepSchedulerApp
                 }
                 else
                 {
-                    // Enable controls
+                    // Restriction is not active, enable controls
                     numericUpDownRestrictionPeriod.Enabled = true;
                     dateTimePickerStart.Enabled = true;
                     dateTimePickerEnd.Enabled = true;
@@ -461,6 +464,7 @@ namespace SleepSchedulerApp
                 }
             }
         }
+
 
         // Optional: Show About Dialog
         private void ShowAboutDialog()
