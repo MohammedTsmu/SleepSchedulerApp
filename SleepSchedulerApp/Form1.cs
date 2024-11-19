@@ -465,7 +465,7 @@ namespace SleepSchedulerApp
         // Optional: Show About Dialog
         private void ShowAboutDialog()
         {
-            MessageBox.Show("تطبيق جدولة النوم\nالإصدار 1.0\nحقوق النشر © 2023", "حول التطبيق", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("تطبيق جدولة النوم\nالإصدار 1.0.0\nحقوق النشر © 2023 \nالمطور د.محمد قاسم", "حول التطبيق", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }
