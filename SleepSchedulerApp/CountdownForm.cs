@@ -1,19 +1,20 @@
 ﻿using System;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace SleepSchedulerApp
 {
     public partial class CountdownForm : Form
     {
-        private int countdownTime;
-        private Timer countdownTimer;
+        private int countdownTime; // Remaining countdown time in seconds
+        private Timer countdownTimer; // Timer to handle countdown
 
-        public CountdownForm(int seconds, bool cancellable = true)
+        public CountdownForm(int seconds)
         {
             InitializeComponent();
             this.TopMost = true;
 
-            // Optional UI settings
+            // Set form properties
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -21,13 +22,10 @@ namespace SleepSchedulerApp
 
             countdownTime = seconds;
 
-            // Use the 'cancellable' parameter to control the Cancel button
-            buttonCancel.Enabled = cancellable;
-            buttonCancel.Visible = cancellable;
-
             // Initialize label with the countdown message
             UpdateCountdownLabel();
 
+            // Initialize and start the countdown timer
             countdownTimer = new Timer
             {
                 Interval = 1000 // 1 second interval
@@ -38,31 +36,48 @@ namespace SleepSchedulerApp
 
         private void CountdownTimer_Tick(object sender, EventArgs e)
         {
-            countdownTime--;
+            countdownTime--; // Decrease countdown time by 1 second
             UpdateCountdownLabel();
 
-            if (countdownTime <= 0)
+            if (countdownTime <= 0) // When countdown reaches 0
             {
-                countdownTimer.Stop();
-                this.DialogResult = DialogResult.OK;
+                countdownTimer.Stop(); // Stop the timer
+                this.DialogResult = DialogResult.OK; // Close the form with an OK result
                 this.Close();
             }
         }
 
         private void UpdateCountdownLabel()
         {
-            int minutes = countdownTime / 60;
-            int seconds = countdownTime % 60;
+            int minutes = countdownTime / 60; // Calculate minutes
+            int seconds = countdownTime % 60; // Calculate seconds
 
-            labelCountdown.Text = $"It's almost time to rest. The computer will shut down in {minutes:D2}:{seconds:D2} minutes. Please save your work and prepare to relax.";
+            // Update label with the countdown and message
+            labelCountdown.Text = $"The computer will shut down in {minutes:D2}:{seconds:D2}. Please save your work.";
         }
 
-        private void buttonCancel_Click(object sender, EventArgs e)
+        protected override void OnResize(EventArgs e)
         {
-            countdownTimer.Stop();
-            countdownTimer.Dispose();
-            this.DialogResult = DialogResult.Cancel;
-            this.Close();
+            base.OnResize(e);
+            AdjustLabelFontSize(); // Adjust font size dynamically when form is resized
+        }
+
+        private void AdjustLabelFontSize()
+        {
+            if (labelCountdown == null || string.IsNullOrEmpty(labelCountdown.Text)) return;
+
+            using (Graphics g = this.CreateGraphics())
+            {
+                // Measure text size and adjust font size to fit the form
+                SizeF textSize = g.MeasureString(labelCountdown.Text, labelCountdown.Font);
+                float widthScale = this.ClientSize.Width / textSize.Width;
+                float heightScale = this.ClientSize.Height / textSize.Height;
+                float scaleFactor = Math.Min(widthScale, heightScale);
+
+                // Apply scaled font size
+                float newFontSize = labelCountdown.Font.Size * scaleFactor * 0.6f; // Add buffer to prevent overflow
+                labelCountdown.Font = new Font(labelCountdown.Font.FontFamily, Math.Max(newFontSize, 10)); // Ensure minimum font size of 10
+            }
         }
     }
 }
