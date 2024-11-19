@@ -1,7 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace SleepSchedulerApp
 {
@@ -13,12 +12,6 @@ namespace SleepSchedulerApp
         // Declare timers at class level
         private Timer preSleepTimer;
         private Timer shutdownTimer;
-
-        private DateTime lastKnownSystemTime;
-        private string lastKnownTimeZoneId;
-        // Add a Timer field
-        private Timer timeZoneCheckTimer;
-
 
         public Form1()
         {
@@ -32,11 +25,10 @@ namespace SleepSchedulerApp
             dateTimePickerEnd.Value = selectedEndTime;
             checkBoxStartup.Checked = Properties.Settings.Default.RunOnStartup;
 
-            // **Load the restriction period**
-            numericUpDownRestrictionPeriod.Value = Properties.Settings.Default.RestrictionPeriod;
+            // Load the restriction period
+            numericUpDownRestrictionPeriod.Value = (decimal)Properties.Settings.Default.RestrictionPeriod;
 
-
-            // **Display the last settings change time**
+            // Display the last settings change time
             DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
             if (lastChange > DateTime.MinValue)
             {
@@ -47,33 +39,6 @@ namespace SleepSchedulerApp
                 labelLastChangeTime.Text = "لم يتم تعديل الإعدادات بعد.";
             }
 
-
-            // Load last known system time and time zone
-            lastKnownSystemTime = Properties.Settings.Default.LastKnownSystemTime;
-            lastKnownTimeZoneId = Properties.Settings.Default.LastKnownTimeZoneId;
-            // Check for system time or time zone changes
-            if (lastKnownSystemTime > DateTime.MinValue)
-            {
-                DetectSystemTimeManipulation();
-            }
-            else
-            {
-                // First run, initialize the values
-                lastKnownSystemTime = DateTime.Now;
-                lastKnownTimeZoneId = TimeZoneInfo.Local.Id;
-                Properties.Settings.Default.LastKnownSystemTime = lastKnownSystemTime;
-                Properties.Settings.Default.LastKnownTimeZoneId = lastKnownTimeZoneId;
-                Properties.Settings.Default.Save();
-            }
-
-            // Initialize the timer to check time zone every 5 minutes (or any interval you prefer)
-            timeZoneCheckTimer = new Timer
-            {
-                Interval = 5 * 60 * 1000 // 5 minutes in milliseconds
-            };
-            timeZoneCheckTimer.Tick += TimeZoneCheckTimer_Tick;
-            timeZoneCheckTimer.Start();
-
             // Subscribe to the SessionSwitch event
             SystemEvents.SessionSwitch += new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
 
@@ -83,55 +48,38 @@ namespace SleepSchedulerApp
             // Subscribe to the FormClosed event
             this.FormClosed += Form1_FormClosed;
 
-            // Subscribe to system events
-            //Subscribe to the system time change event to detect changes during runtime:
-            //Subscribe to Time Zone Change Events
-            SystemEvents.TimeChanged += SystemEvents_TimeChanged;
-            
-
-
             CheckSleepTime();
         }
 
         private void DateTimePickerStart_ValueChanged(object sender, EventArgs e)
         {
             selectedStartTime = dateTimePickerStart.Value;
-            Properties.Settings.Default.StartTime = selectedStartTime;
-            Properties.Settings.Default.Save();
         }
 
         private void DateTimePickerEnd_ValueChanged(object sender, EventArgs e)
         {
             selectedEndTime = dateTimePickerEnd.Value;
-            Properties.Settings.Default.EndTime = selectedEndTime;
-            Properties.Settings.Default.Save();
         }
 
         private void checkBoxStartup_CheckedChanged(object sender, EventArgs e)
         {
-            Properties.Settings.Default.RunOnStartup = checkBoxStartup.Checked;
-            Properties.Settings.Default.Save();
-
-            string appPath = Application.ExecutablePath;
-            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
-            {
-                if (checkBoxStartup.Checked)
-                {
-                    key.SetValue("SleepSchedulerApp", $"\"{appPath}\"");
-                }
-                else
-                {
-                    key.DeleteValue("SleepSchedulerApp", false);
-                }
-            }
+            // Update RunOnStartup setting when saving settings
         }
 
         private void buttonSaveSettings_Click(object sender, EventArgs e)
         {
-            // Detect system time or time zone changes
-            DetectSystemTimeManipulation();
+            // Get the new sleep times from the DateTimePicker controls
+            selectedStartTime = dateTimePickerStart.Value;
+            selectedEndTime = dateTimePickerEnd.Value;
 
-            // **Check if the restriction period has passed**
+            // Validate that end time is after start time
+            if (selectedEndTime <= selectedStartTime)
+            {
+                MessageBox.Show("يجب أن يكون وقت انتهاء النوم بعد وقت بدء النوم.");
+                return;
+            }
+
+            // Check if the restriction period has passed
             DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
             int restrictionHours = (int)numericUpDownRestrictionPeriod.Value;
 
@@ -149,30 +97,39 @@ namespace SleepSchedulerApp
                 }
             }
 
-            // Validate that end time is after start time
-            if (selectedEndTime <= selectedStartTime)
-            {
-                MessageBox.Show("يجب أن يكون وقت انتهاء النوم بعد وقت بدء النوم.");
-                return;
-            }
-
             // Save the new sleep times
-            selectedStartTime = dateTimePickerStart.Value;
-            selectedEndTime = dateTimePickerEnd.Value;
             Properties.Settings.Default.StartTime = selectedStartTime;
             Properties.Settings.Default.EndTime = selectedEndTime;
 
-            // **Save the restriction period**
+            // Save the restriction period
             Properties.Settings.Default.RestrictionPeriod = restrictionHours;
 
-            // **Update the last settings change time**
+            // Update the last settings change time
             Properties.Settings.Default.LastSettingsChangeTime = DateTime.Now;
 
+            // Save the RunOnStartup setting
+            Properties.Settings.Default.RunOnStartup = checkBoxStartup.Checked;
+
+            // Update the registry for RunOnStartup
+            string appPath = Application.ExecutablePath;
+            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
+            {
+                if (checkBoxStartup.Checked)
+                {
+                    key.SetValue("SleepSchedulerApp", $"\"{appPath}\"");
+                }
+                else
+                {
+                    key.DeleteValue("SleepSchedulerApp", false);
+                }
+            }
+
+            // Save all settings
             Properties.Settings.Default.Save();
 
             MessageBox.Show("تم حفظ الإعدادات بنجاح.");
 
-            // **Update the last change time label**
+            // Update the last change time label
             labelLastChangeTime.Text = $"تم تعديل الإعدادات آخر مرة في: {DateTime.Now}";
 
             // Call CheckSleepTime to set up new timers
@@ -338,86 +295,6 @@ namespace SleepSchedulerApp
             }
         }
 
-        private void DetectSystemTimeManipulation()
-        {
-            try
-            {
-                DateTime currentTime = DateTime.Now;
-                string currentTimeZoneId = TimeZoneInfo.Local.Id;
-
-                // Check for significant time change (e.g., more than 5 minutes)
-                TimeSpan timeDifference = currentTime - lastKnownSystemTime;
-                if (Math.Abs(timeDifference.TotalMinutes) > 5)
-                {
-                    HandleSystemTimeChange();
-                }
-
-                // Update the stored values
-                lastKnownSystemTime = currentTime;
-                lastKnownTimeZoneId = currentTimeZoneId;
-
-                Properties.Settings.Default.LastKnownSystemTime = lastKnownSystemTime;
-                Properties.Settings.Default.LastKnownTimeZoneId = lastKnownTimeZoneId;
-                Properties.Settings.Default.Save();
-            }
-            catch (Exception ex)
-            {
-                LogEvent($"Error detecting system time manipulation: {ex.Message}");
-            }
-        }
-
-        private void HandleSystemTimeChange()
-        {
-            // Reset restriction period or take appropriate action
-            MessageBox.Show("تم اكتشاف تغيير في وقت النظام. لا يُسمح بتغيير وقت النظام أثناء تفعيل فترة القيود.",
-                            "تحذير", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-            // Optionally, reset the last settings change time to enforce the restriction period
-            Properties.Settings.Default.LastSettingsChangeTime = DateTime.Now;
-            Properties.Settings.Default.Save();
-        }
-
-        private void HandleTimeZoneChange()
-        {
-            // Reset restriction period or take appropriate action
-            MessageBox.Show("تم اكتشاف تغيير في المنطقة الزمنية. لا يُسمح بتغيير المنطقة الزمنية أثناء تفعيل فترة القيود.",
-                            "تحذير", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-            // Optionally, reset the last settings change time to enforce the restriction period
-            Properties.Settings.Default.LastSettingsChangeTime = DateTime.Now;
-            Properties.Settings.Default.Save();
-        }
-
-        // Implement the timer tick event handler
-        private void TimeZoneCheckTimer_Tick(object sender, EventArgs e)
-        {
-            DetectTimeZoneChange();
-        }
-
-        // Implement the DetectTimeZoneChange method
-        private void DetectTimeZoneChange()
-        {
-            try
-            {
-                string currentTimeZoneId = TimeZoneInfo.Local.Id;
-
-                if (!string.Equals(currentTimeZoneId, lastKnownTimeZoneId, StringComparison.OrdinalIgnoreCase))
-                {
-                    HandleTimeZoneChange();
-                }
-
-                // Update the stored time zone ID
-                lastKnownTimeZoneId = currentTimeZoneId;
-                Properties.Settings.Default.LastKnownTimeZoneId = lastKnownTimeZoneId;
-                Properties.Settings.Default.Save();
-            }
-            catch (Exception ex)
-            {
-                LogEvent($"Error detecting time zone change: {ex.Message}");
-            }
-        }
-
-
         private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
         {
             if (e.Reason == SessionSwitchReason.SessionUnlock)
@@ -443,10 +320,6 @@ namespace SleepSchedulerApp
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
-            SystemEvents.TimeChanged -= SystemEvents_TimeChanged;
-
-            timeZoneCheckTimer?.Stop();
-            timeZoneCheckTimer?.Dispose();
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -462,16 +335,5 @@ namespace SleepSchedulerApp
                 MessageBox.Show("لا يمكنك إغلاق التطبيق خلال وقت النوم.", "جدولة النوم", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
-
-        private void SystemEvents_TimeChanged(object sender, EventArgs e)
-        {
-            DetectSystemTimeManipulation();
-        }
-
-        private void SystemEvents_TimeZoneChanged(object sender, EventArgs e)
-        {
-            DetectSystemTimeManipulation();
-        }
-
     }
 }
