@@ -1,6 +1,8 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 
 namespace SleepSchedulerApp
 {
@@ -12,6 +14,8 @@ namespace SleepSchedulerApp
         // Declare timers at class level
         private Timer preSleepTimer;
         private Timer shutdownTimer;
+
+        private Timer restrictionCheckTimer;
 
         public Form1()
         {
@@ -41,6 +45,17 @@ namespace SleepSchedulerApp
 
             // Subscribe to the SessionSwitch event
             SystemEvents.SessionSwitch += new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
+
+            // Initialize the restrictionCheckTimer but do not start it yet
+            restrictionCheckTimer = new Timer();
+            restrictionCheckTimer.Interval = 60 * 1000; // 1 minute
+            restrictionCheckTimer.Tick += (s, args) =>
+            {
+                DisableControlsIfRestrictionActive();
+            };
+
+            // Check if the restriction period is active and update controls accordingly
+            DisableControlsIfRestrictionActive();
 
             // Handle FormClosing to prevent closing during sleep time
             this.FormClosing += Form1_FormClosing;
@@ -81,11 +96,11 @@ namespace SleepSchedulerApp
 
             // Check if the restriction period has passed
             DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
-            int restrictionHours = (int)numericUpDownRestrictionPeriod.Value;
+            int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
 
-            if (restrictionHours > 0 && lastChange > DateTime.MinValue)
+            if (savedRestrictionHours > 0 && lastChange > DateTime.MinValue)
             {
-                DateTime restrictionEndTime = lastChange.AddHours(restrictionHours);
+                DateTime restrictionEndTime = lastChange.AddHours(savedRestrictionHours);
 
                 if (DateTime.Now < restrictionEndTime)
                 {
@@ -101,8 +116,9 @@ namespace SleepSchedulerApp
             Properties.Settings.Default.StartTime = selectedStartTime;
             Properties.Settings.Default.EndTime = selectedEndTime;
 
-            // Save the restriction period
-            Properties.Settings.Default.RestrictionPeriod = restrictionHours;
+            // Save the new restriction period
+            int newRestrictionHours = (int)numericUpDownRestrictionPeriod.Value;
+            Properties.Settings.Default.RestrictionPeriod = newRestrictionHours;
 
             // Update the last settings change time
             Properties.Settings.Default.LastSettingsChangeTime = DateTime.Now;
@@ -129,12 +145,16 @@ namespace SleepSchedulerApp
 
             MessageBox.Show("تم حفظ الإعدادات بنجاح.");
 
+            // Update control states based on the new restriction period
+            DisableControlsIfRestrictionActive();
+
             // Update the last change time label
             labelLastChangeTime.Text = $"تم تعديل الإعدادات آخر مرة في: {DateTime.Now}";
 
             // Call CheckSleepTime to set up new timers
             CheckSleepTime();
         }
+
 
         private void CheckSleepTime()
         {
@@ -320,6 +340,8 @@ namespace SleepSchedulerApp
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+            restrictionCheckTimer?.Stop();
+            restrictionCheckTimer?.Dispose();
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -334,6 +356,70 @@ namespace SleepSchedulerApp
                 e.Cancel = true;
                 MessageBox.Show("لا يمكنك إغلاق التطبيق خلال وقت النوم.", "جدولة النوم", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+            // Save settings on close
+            Properties.Settings.Default.Save();
         }
+
+        private void DisableControlsIfRestrictionActive()
+        {
+            DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
+            int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
+
+            if (savedRestrictionHours > 0 && lastChange > DateTime.MinValue)
+            {
+                DateTime restrictionEndTime = lastChange.AddHours(savedRestrictionHours);
+
+                if (DateTime.Now < restrictionEndTime)
+                {
+                    // Disable controls
+                    numericUpDownRestrictionPeriod.Enabled = false;
+                    dateTimePickerStart.Enabled = false;
+                    dateTimePickerEnd.Enabled = false;
+                    checkBoxStartup.Enabled = false;
+
+                    // Update label to show restriction end time
+                    labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {restrictionEndTime}";
+                    labelRestrictionInfo.Visible = true;
+
+                    // Start the timer to re-enable controls when restriction ends
+                    if (!restrictionCheckTimer.Enabled)
+                    {
+                        restrictionCheckTimer.Start();
+                    }
+                }
+                else
+                {
+                    // Enable controls
+                    numericUpDownRestrictionPeriod.Enabled = true;
+                    dateTimePickerStart.Enabled = true;
+                    dateTimePickerEnd.Enabled = true;
+                    checkBoxStartup.Enabled = true;
+
+                    // Hide the restriction info label
+                    labelRestrictionInfo.Visible = false;
+
+                    // Stop the timer since restriction has ended
+                    if (restrictionCheckTimer.Enabled)
+                    {
+                        restrictionCheckTimer.Stop();
+                    }
+                }
+            }
+            else
+            {
+                // No active restriction, enable controls
+                numericUpDownRestrictionPeriod.Enabled = true;
+                dateTimePickerStart.Enabled = true;
+                dateTimePickerEnd.Enabled = true;
+                checkBoxStartup.Enabled = true;
+
+                // Stop the timer since there's no restriction
+                if (restrictionCheckTimer.Enabled)
+                {
+                    restrictionCheckTimer.Stop();
+                }
+            }
+        }
+
     }
 }
