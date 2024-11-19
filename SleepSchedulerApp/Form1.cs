@@ -209,6 +209,7 @@ namespace SleepSchedulerApp
             }
 
 
+
             if (now >= todayStart && now <= todayEnd)
             {
                 LogEvent("الوقت الحالي ضمن وقت النوم. يتم تطبيق سياسة النوم.");
