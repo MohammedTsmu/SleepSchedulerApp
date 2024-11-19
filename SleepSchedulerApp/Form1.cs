@@ -17,6 +17,9 @@ namespace SleepSchedulerApp
         private Timer restrictionCheckTimer;
         private Timer statusClearTimer;
 
+        //private int retryCount = 0;
+        //private const int maxRetryLimit = 3; // Set the retry limit to 3
+
         public Form1()
         {
             InitializeComponent();
@@ -194,75 +197,59 @@ namespace SleepSchedulerApp
 
         private void CheckSleepTime()
         {
-            try
+            // Dispose existing timers
+            DisposeTimer(ref preSleepTimer);
+
+            DateTime now = DateTime.Now;
+            DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
+            DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+
+            // Adjust end time if it is before the start time (indicating it is on the next day)
+            if (selectedEndTime < selectedStartTime)
             {
-                // Dispose existing timers safely
-                DisposeTimer(ref preSleepTimer);
+                todayEnd = todayEnd.AddDays(1); // End time moves to the next day
+            }
 
-                DateTime now = DateTime.Now;
-                DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
-                DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+            if (now >= todayStart && now <= todayEnd)
+            {
+                LogEvent("الوقت الحالي ضمن وقت النوم. يتم تطبيق سياسة النوم.");
+                ShowCountdownAndShutdown();
+            }
+            else if (now < todayStart)
+            {
+                TimeSpan timeUntilSleep = todayStart - now;
 
-                // Adjust end time if it is before the start time (indicating it is on the next day)
-                if (selectedEndTime < selectedStartTime)
+                if (timeUntilSleep.TotalMilliseconds > 5 * 60 * 1000)
                 {
-                    todayEnd = todayEnd.AddDays(1); // End time moves to the next day
+                    preSleepTimer = new Timer
+                    {
+                        Interval = (int)timeUntilSleep.TotalMilliseconds - (5 * 60 * 1000) // Trigger 5 minutes before sleep time
+                    };
+
+                    preSleepTimer.Tick += (sender, e) =>
+                    {
+                        DisposeTimer(ref preSleepTimer);
+                        LogEvent("بقيت 5 دقائق لوقت النوم. يتم عرض نافذة تنبيه.");
+                        ShowReminderBeforeSleep();
+                    };
+                    preSleepTimer.Start();
                 }
-
-                if (now >= todayStart && now <= todayEnd)
+                else if (timeUntilSleep.TotalMilliseconds > 0)
                 {
-                    LogEvent("الوقت الحالي ضمن وقت النوم. يتم تطبيق سياسة النوم.");
-                    ShowCountdownAndShutdown();
-                }
-                else if (now < todayStart)
-                {
-                    TimeSpan timeUntilSleep = todayStart - now;
-
-                    if (timeUntilSleep.TotalMilliseconds > 60 * 1000)
-                    {
-                        DisposeTimer(ref preSleepTimer); // Ensure the previous timer is cleared safely
-
-                        preSleepTimer = new Timer
-                        {
-                            Interval = (int)timeUntilSleep.TotalMilliseconds - (60 * 1000)
-                        };
-
-                        preSleepTimer.Tick += (sender, e) =>
-                        {
-                            try
-                            {
-                                DisposeTimer(ref preSleepTimer);
-                                LogEvent("بقيت دقيقة واحدة لوقت النوم. يتم عرض نافذة العد التنازلي.");
-                                ShowCountdownBeforeSleep();
-                            }
-                            catch (Exception ex)
-                            {
-                                LogEvent($"Error during preSleepTimer Tick: {ex.Message}");
-                            }
-                        };
-
-                        preSleepTimer.Start();
-                    }
-                    else if (timeUntilSleep.TotalMilliseconds > 0)
-                    {
-                        LogEvent("أقل من دقيقة واحدة لوقت النوم. يتم عرض العد التنازلي فوراً.");
-                        ShowCountdownBeforeSleep();
-                    }
-                    else
-                    {
-                        LogEvent("الوقت الحالي خارج وقت النوم. لم يتم اتخاذ أي إجراء.");
-                    }
+                    LogEvent("أقل من 5 دقائق لوقت النوم. يتم عرض العد التنازلي فوراً.");
+                    ShowCountdownBeforeSleep();
                 }
                 else
                 {
                     LogEvent("الوقت الحالي خارج وقت النوم. لم يتم اتخاذ أي إجراء.");
                 }
             }
-            catch (Exception ex)
+            else
             {
-                LogEvent($"Error in CheckSleepTime: {ex.Message}");
+                LogEvent("الوقت الحالي خارج وقت النوم. لم يتم اتخاذ أي إجراء.");
             }
         }
+
 
 
         private void DisposeTimer(ref Timer timer)
@@ -287,82 +274,63 @@ namespace SleepSchedulerApp
         {
             try
             {
-                CountdownForm countdownForm = new CountdownForm(10); // 10-second countdown
-                DialogResult result = countdownForm.ShowDialog();
+                LogEvent("بدء العد التنازلي قبل وقت النوم.");
 
-                if (result == DialogResult.OK)
+                // Show a non-cancelable countdown form for 5 minutes
+                CountdownForm countdownForm = new CountdownForm(5 * 60, false); // 5-minute countdown, non-cancelable
+                countdownForm.ShowDialog();
+
+                LogEvent("انتهى العد التنازلي قبل وقت النوم. يتم التحضير لإيقاف التشغيل.");
+
+                // Dispose existing shutdown timer safely
+                DisposeTimer(ref shutdownTimer);
+
+                shutdownTimer = new Timer
                 {
-                    LogEvent("انتهى العد التنازلي قبل وقت النوم. يتم التحضير لإيقاف التشغيل.");
+                    Interval = 2000 // 2-second delay before shutdown
+                };
 
-                    // Dispose existing shutdown timer safely
-                    DisposeTimer(ref shutdownTimer);
-
-                    shutdownTimer = new Timer
-                    {
-                        Interval = 2000 // 2-second delay
-                    };
-
-                    shutdownTimer.Tick += (sender, e) =>
-                    {
-                        try
-                        {
-                            DisposeTimer(ref shutdownTimer);
-                            ShutdownComputer();
-                        }
-                        catch (Exception ex)
-                        {
-                            LogEvent($"Error during shutdownTimer Tick: {ex.Message}");
-                        }
-                    };
-
-                    shutdownTimer.Start();
-                }
-                else
+                shutdownTimer.Tick += (sender, e) =>
                 {
-                    LogEvent("تم إلغاء العد التنازلي قبل وقت النوم من قبل المستخدم. سيتم إعادة المحاولة بعد 5 دقائق.");
-
-                    // Dispose existing pre-sleep retry timer safely
-                    DisposeTimer(ref preSleepTimer);
-
-                    // Set up a retry timer for pre-sleep countdown
-                    preSleepTimer = new Timer
+                    try
                     {
-                        Interval = 5 * 60 * 1000 // Retry in 5 minutes
-                    };
-
-                    preSleepTimer.Tick += (sender, e) =>
+                        DisposeTimer(ref shutdownTimer);
+                        ShutdownComputer();
+                    }
+                    catch (Exception ex)
                     {
-                        try
-                        {
-                            DisposeTimer(ref preSleepTimer);
+                        LogEvent($"Error during shutdownTimer Tick: {ex.Message}");
+                    }
+                };
 
-                            DateTime now = DateTime.Now;
-                            DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
-
-                            if (now < todayStart)
-                            {
-                                LogEvent("إعادة المحاولة للعد التنازلي قبل وقت النوم.");
-                                ShowCountdownBeforeSleep();
-                            }
-                            else
-                            {
-                                LogEvent("تم تجاوز إعادة المحاولة لأن وقت النوم قد بدأ.");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            LogEvent($"Error during preSleepTimer Tick retry: {ex.Message}");
-                        }
-                    };
-
-                    preSleepTimer.Start();
-                }
+                shutdownTimer.Start();
             }
             catch (Exception ex)
             {
                 LogEvent($"Error in ShowCountdownBeforeSleep: {ex.Message}");
             }
         }
+
+
+        private void ShowReminderBeforeSleep()
+        {
+            try
+            {
+                LogEvent("عرض تنبيه للمستخدم بأن وقت النوم قريب.");
+
+                MessageBox.Show("بقيت 5 دقائق قبل بدء وقت النوم. يرجى حفظ أي أعمال غير محفوظة الآن.",
+                    "تذكير بوقت النوم", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // Proceed to countdown immediately after the reminder
+                ShowCountdownBeforeSleep();
+            }
+            catch (Exception ex)
+            {
+                LogEvent($"Error in ShowReminderBeforeSleep: {ex.Message}");
+            }
+        }
+
+
 
 
         private void ShowCountdownAndShutdown()

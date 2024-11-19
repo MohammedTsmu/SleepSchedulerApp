@@ -30,7 +30,7 @@ namespace SleepSchedulerApp
 
             countdownTimer = new Timer
             {
-                Interval = 1000
+                Interval = 1000 // 1 second interval
             };
             countdownTimer.Tick += CountdownTimer_Tick;
             countdownTimer.Start();
@@ -51,7 +51,10 @@ namespace SleepSchedulerApp
 
         private void UpdateCountdownLabel()
         {
-            labelCountdown.Text = $"The computer will shut down in {countdownTime} seconds. Please save your work immediately.";
+            int minutes = countdownTime / 60;
+            int seconds = countdownTime % 60;
+
+            labelCountdown.Text = $"It's almost time to rest. The computer will shut down in {minutes:D2}:{seconds:D2} minutes. Please save your work and prepare to relax.";
         }
 
         private void buttonCancel_Click(object sender, EventArgs e)
