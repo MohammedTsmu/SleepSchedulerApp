@@ -211,9 +211,13 @@ namespace SleepSchedulerApp
             DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
 
             // Handle overnight sleep schedule
-            if (selectedEndTime < selectedStartTime)
+            //if (selectedEndTime < selectedStartTime)
+            //{
+            //    todayEnd = todayEnd.AddDays(1); // End time moves to the next day
+            //}
+            if (selectedEndTime <= selectedStartTime)
             {
-                todayEnd = todayEnd.AddDays(1); // End time moves to the next day
+                todayEnd = todayEnd.AddDays(1); // Consider it as extending into the next day
             }
 
             // Case 1: Within sleep time
@@ -229,24 +233,19 @@ namespace SleepSchedulerApp
 
                 if (timeUntilSleep.TotalMilliseconds > 5 * 60 * 1000)
                 {
-                    // Set a timer to trigger the 5-minute warning
                     preSleepTimer = new Timer
                     {
                         Interval = (int)(timeUntilSleep.TotalMilliseconds - (5 * 60 * 1000)) // Trigger exactly 5 minutes before sleep
                     };
-
                     preSleepTimer.Tick += (sender, e) =>
                     {
                         DisposeTimer(ref preSleepTimer);
-                        LogEvent("5-minute alert triggered.");
                         ShowReminderBeforeSleep();
                     };
                     preSleepTimer.Start();
                 }
                 else
                 {
-                    // Less than 5 minutes until sleep
-                    LogEvent("Less than 5 minutes to sleep time. Starting immediate countdown.");
                     ShowCountdownBeforeSleep((int)timeUntilSleep.TotalSeconds);
                 }
             }
@@ -257,29 +256,15 @@ namespace SleepSchedulerApp
             }
         }
 
-        //private void ShowReminderBeforeSleep()
-        //{
-        //    try
-        //    {
-        //        LogEvent("Displaying reminder to user that shutdown will occur in 5 minutes.");
-        //        MessageBox.Show("Your computer will shut down in 5 minutes. Please save your work and prepare to rest.",
-        //            "Sleep Scheduler", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-        //        // Start a countdown for 5 minutes
-        //        ShowCountdownBeforeSleep(5 * 60);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        LogEvent($"Error in ShowReminderBeforeSleep: {ex.Message}");
-        //    }
-        //}
         private void ShowReminderBeforeSleep()
         {
             try
             {
                 LogEvent("Displaying reminder with countdown for 5 minutes before shutdown.");
 
-                // Show a countdown for 5 minutes
+                // Play sound notification
+                System.Media.SystemSounds.Exclamation.Play();
+
                 int countdownTime = 5 * 60; // 5 minutes in seconds
                 CountdownForm countdownForm = new CountdownForm(countdownTime); // Non-cancellable countdown
                 countdownForm.ShowDialog();
@@ -292,7 +277,6 @@ namespace SleepSchedulerApp
                 LogEvent($"Error in ShowReminderBeforeSleep: {ex.Message}");
             }
         }
-
 
         private void ShowCountdownBeforeSleep(int remainingSeconds)
         {
@@ -313,25 +297,21 @@ namespace SleepSchedulerApp
             }
         }
 
-
-
         private void DisposeTimer(ref Timer timer)
         {
+            if (timer == null) return;
+
             try
             {
-                if (timer != null)
-                {
-                    timer.Stop();
-                    timer.Dispose();
-                    timer = null; // Set to null to avoid accessing disposed timer
-                }
+                timer.Stop();
+                timer.Dispose();
+                timer = null; // Avoid accessing disposed timer
             }
             catch (Exception ex)
             {
                 LogEvent($"Error while disposing timer: {ex.Message}");
             }
         }
-
 
         private void ShowCountdownAndShutdown()
         {
@@ -348,14 +328,14 @@ namespace SleepSchedulerApp
         {
             try
             {
-                LogEvent("محاولة إيقاف تشغيل الكمبيوتر.");
+                LogEvent("Attempting to shut down the computer.");
                 System.Diagnostics.Process.Start("shutdown", "/s /f /t 0");
-                LogEvent("تم إصدار أمر إيقاف تشغيل الكمبيوتر بنجاح.");
+                LogEvent("Shutdown command issued successfully.");
             }
             catch (Exception ex)
             {
-                LogEvent($"فشل في إيقاف تشغيل الكمبيوتر: {ex.Message}");
-                MessageBox.Show($"فشل في إيقاف تشغيل الكمبيوتر: {ex.Message}", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                LogEvent($"Failed to shut down the computer: {ex.Message}");
+                MessageBox.Show($"Failed to shut down the computer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -381,7 +361,7 @@ namespace SleepSchedulerApp
         {
             if (e.Reason == SessionSwitchReason.SessionUnlock)
             {
-                LogEvent("قام المستخدم بإلغاء قفل الجلسة. يتم التحقق من وقت النوم.");
+                LogEvent("User unlocked the session. Checking sleep time.");
 
                 DateTime now = DateTime.Now;
                 DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
@@ -389,13 +369,18 @@ namespace SleepSchedulerApp
 
                 if (now >= todayStart && now <= todayEnd)
                 {
-                    // It's still sleep time; enforcing shutdown
+                    // Still within sleep time; enforcing shutdown
                     ShowCountdownAndShutdown();
                 }
                 else
                 {
-                    LogEvent("انتهى وقت النوم. لم يتم اتخاذ أي إجراء.");
+                    LogEvent("Sleep time is over. No action required.");
                 }
+            }
+            else if (e.Reason == SessionSwitchReason.SessionLock)
+            {
+                // Handle session lock events if needed to enforce more controls
+                LogEvent("Session locked by user.");
             }
         }
 
@@ -514,9 +499,7 @@ namespace SleepSchedulerApp
             MessageBox.Show("تطبيق جدولة النوم\nالإصدار 1.0.0\nحقوق النشر © 2023 \nالمطور د.محمد قاسم", "حول التطبيق", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        /// <summary>
         /// Initializes the system tray icon and menu.
-        /// </summary>
         private void InitializeTrayIcon()
         {
             // Create tray menu with options
@@ -542,15 +525,11 @@ namespace SleepSchedulerApp
                 Visible = true
             };
 
-
-
             // Handle double-click to open settings
             trayIcon.DoubleClick += (s, e) => ShowMainWindow();
         }
 
-        /// <summary>
         /// Configures the behavior of the main window on startup and minimize/close actions.
-        /// </summary>
         private void ConfigureFormBehavior()
         {
             // Start minimized to tray
@@ -574,9 +553,7 @@ namespace SleepSchedulerApp
             };
         }
 
-        /// <summary>
         /// Shows the main application window.
-        /// </summary>
         // Restore opacity when showing the form
         private void ShowMainWindow()
         {
@@ -601,12 +578,8 @@ namespace SleepSchedulerApp
                 isRestoringWindow = false;
             }
         }
-
-
-
-        /// <summary>
+        
         /// Minimizes the application to the system tray.
-        /// </summary>
         private void MinimizeToTray()
         {
             if (isRestoringWindow) return; // Prevent recursive calls
@@ -625,9 +598,7 @@ namespace SleepSchedulerApp
             }
         }
 
-        /// <summary>
         /// Exits the application and removes the tray icon.
-        /// </summary>
         private void ExitApplication()
         {
             trayIcon.Visible = false;
