@@ -110,11 +110,6 @@ namespace SleepSchedulerApp
             selectedEndTime = dateTimePickerEnd.Value;
         }
 
-        private void checkBoxStartup_CheckedChanged(object sender, EventArgs e)
-        {
-            // Update RunOnStartup setting when saving settings
-        }
-
         private void buttonSaveSettings_Click(object sender, EventArgs e)
         {
             // Get the new sleep times from the DateTimePicker controls
@@ -128,7 +123,6 @@ namespace SleepSchedulerApp
                 return;
             }
 
-
             // Check if the restriction period has passed
             DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
             int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
@@ -140,6 +134,7 @@ namespace SleepSchedulerApp
                 if (DateTime.Now < restrictionEndTime)
                 {
                     TimeSpan timeLeft = restrictionEndTime - DateTime.Now;
+                    
                     MessageBox.Show($"لا يمكنك تغيير إعدادات النوم حتى {restrictionEndTime}.\n" +
                                     $"الوقت المتبقي: {timeLeft.Hours} ساعة و {timeLeft.Minutes} دقيقة.",
                                     "قيود التغيير نشطة", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -150,10 +145,6 @@ namespace SleepSchedulerApp
             // Save the new sleep times
             Properties.Settings.Default.StartTime = selectedStartTime;
             Properties.Settings.Default.EndTime = selectedEndTime;
-
-            //// Save the new restriction period
-            //int newRestrictionHours = (int)numericUpDownRestrictionPeriod.Value;
-            //Properties.Settings.Default.RestrictionPeriod = newRestrictionHours;
 
             // Save the new restriction period duration set by the user
             int userDefinedRestrictionHours = (int)numericUpDownRestrictionPeriod.Value;
@@ -173,11 +164,11 @@ namespace SleepSchedulerApp
                 {
                     if (checkBoxStartup.Checked)
                     {
-                        key.SetValue("SleepSchedulerApp", $"\"{appPath}\"");
+                        key.SetValue("SleepScheduler", $"\"{appPath}\"");
                     }
                     else
                     {
-                        key.DeleteValue("SleepSchedulerApp", false);
+                        key.DeleteValue("SleepScheduler", false);
                     }
                 }
             }
@@ -206,7 +197,6 @@ namespace SleepSchedulerApp
 
             // Set up the restriction period timer to activate restriction at the correct time
             SetRestrictionTimer();
-
         }
 
         private void CheckSleepTime()
@@ -218,11 +208,6 @@ namespace SleepSchedulerApp
             DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
             DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
 
-            // Handle overnight sleep schedule
-            //if (selectedEndTime < selectedStartTime)
-            //{
-            //    todayEnd = todayEnd.AddDays(1); // End time moves to the next day
-            //}
             if (selectedEndTime <= selectedStartTime)
             {
                 todayEnd = todayEnd.AddDays(1); // Consider it as extending into the next day
@@ -326,7 +311,8 @@ namespace SleepSchedulerApp
             LogEvent("بدأ وقت النوم. يتم التحضير لإيقاف تشغيل الكمبيوتر.");
 
             // Show a non-cancellable countdown
-            CountdownForm countdownForm = new CountdownForm(10);
+            CountdownForm countdownForm = new CountdownForm(5);
+            //CountdownForm countdownForm = new CountdownForm(10);
             countdownForm.ShowDialog();
 
             ShutdownComputer();
@@ -430,110 +416,6 @@ namespace SleepSchedulerApp
             Properties.Settings.Default.Save();
         }
 
-        //private void DisableControlsIfRestrictionActive()
-        //{
-        //    DateTime now = DateTime.Now;
-        //    DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
-        //    int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
-
-        //    if (savedRestrictionHours > 0)
-        //    {
-        //        // Calculate restriction start time: X hours before the sleep start time
-        //        DateTime restrictionStartTime = todayStart.AddHours(-savedRestrictionHours);
-
-        //        // Check if we are currently within the restriction period (before sleep time)
-        //        if (now >= restrictionStartTime && now < todayStart)
-        //        {
-        //            // Restriction is active: disable controls
-        //            DisableControls();
-
-        //            // Update label to show restriction status
-        //            labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {todayStart}";
-        //            labelRestrictionInfo.Visible = true;
-
-        //            // Start the timer to keep checking for the restriction period
-        //            if (!restrictionCheckTimer.Enabled)
-        //            {
-        //                restrictionCheckTimer.Start();
-        //            }
-        //        }
-        //        else
-        //        {
-        //            // Restriction is not active, enable controls
-        //            EnableControls();
-
-        //            // Hide the restriction info label
-        //            labelRestrictionInfo.Visible = false;
-
-        //            // Stop the timer since restriction has ended
-        //            if (restrictionCheckTimer.Enabled)
-        //            {
-        //                restrictionCheckTimer.Stop();
-        //            }
-        //        }
-        //    }
-        //    else
-        //    {
-        //        // No active restriction, enable controls
-        //        numericUpDownRestrictionPeriod.Enabled = true;
-        //        dateTimePickerStart.Enabled = true;
-        //        dateTimePickerEnd.Enabled = true;
-        //        checkBoxStartup.Enabled = true;
-
-        //        // Hide the restriction info label
-        //        labelRestrictionInfo.Visible = false;
-
-        //        // Stop the timer since there's no restriction
-        //        if (restrictionCheckTimer.Enabled)
-        //        {
-        //            restrictionCheckTimer.Stop();
-        //        }
-        //    }
-        //}
-
-        //private void DisableControlsIfRestrictionActive()
-        //{
-        //    DateTime now = DateTime.Now;
-        //    DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
-        //    DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
-        //    int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
-
-        //    // Calculate restriction start time: X hours before the sleep start time
-        //    DateTime restrictionStartTime = todayStart.AddHours(-savedRestrictionHours);
-
-        //    // Restriction is active if we are between restriction start and sleep end time
-        //    if (now >= restrictionStartTime && now <= todayEnd)
-        //    {
-        //        //DisableControls();
-        //        SetControlsEnabled(false);
-
-        //        // Update label to show restriction status
-        //        labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {todayEnd}";
-        //        labelRestrictionInfo.Visible = true;
-
-        //        // Start the timer to keep checking until restriction ends
-        //        if (!restrictionCheckTimer.Enabled)
-        //        {
-        //            restrictionCheckTimer.Interval = (int)(todayEnd - now).TotalMilliseconds;
-        //            restrictionCheckTimer.Start();
-        //        }
-        //    }
-        //    else
-        //    {
-        //        //EnableControls();
-        //        SetControlsEnabled(true);
-
-        //        // Hide the restriction info label
-        //        labelRestrictionInfo.Visible = false;
-
-        //        // Stop the timer since restriction has ended
-        //        if (restrictionCheckTimer.Enabled)
-        //        {
-        //            restrictionCheckTimer.Stop();
-        //        }
-        //    }
-        //}
-
         private void DisableControlsIfRestrictionActive()
         {
             DateTime now = DateTime.Now;
@@ -578,22 +460,6 @@ namespace SleepSchedulerApp
             }
         }
 
-
-        //private void DisableControls()
-        //{
-        //    numericUpDownRestrictionPeriod.Enabled = false;
-        //    dateTimePickerStart.Enabled = false;
-        //    dateTimePickerEnd.Enabled = false;
-        //    checkBoxStartup.Enabled = false;
-        //}
-
-        //private void EnableControls()
-        //{
-        //    numericUpDownRestrictionPeriod.Enabled = true;
-        //    dateTimePickerStart.Enabled = true;
-        //    dateTimePickerEnd.Enabled = true;
-        //    checkBoxStartup.Enabled = true;
-        //}
         private void SetControlsEnabled(bool enabled)
         {
             numericUpDownRestrictionPeriod.Enabled = enabled;
@@ -601,7 +467,6 @@ namespace SleepSchedulerApp
             dateTimePickerEnd.Enabled = enabled;
             checkBoxStartup.Enabled = enabled;
         }
-
 
         // Optional: Show About Dialog
         private void ShowAboutDialog()
@@ -716,7 +581,6 @@ namespace SleepSchedulerApp
             Application.Exit();
         }
 
-
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             // Prevent closing and minimize to tray instead
@@ -734,43 +598,6 @@ namespace SleepSchedulerApp
             }
         }
 
-        //private void SetRestrictionTimer()
-        //{
-        //    // Dispose of any existing restriction timer if already active
-        //    DisposeTimer(ref restrictionCheckTimer);
-
-        //    DateTime now = DateTime.Now;
-        //    DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
-        //    int userDefinedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
-
-        //    DateTime restrictionStartTime = todayStart.AddHours(-userDefinedRestrictionHours);
-
-        //    if (now < restrictionStartTime)
-        //    {
-        //        // Calculate the time remaining until restriction period starts
-        //        TimeSpan timeUntilRestriction = restrictionStartTime - now;
-
-        //        // Set a timer to enable restriction at the right time
-        //        restrictionCheckTimer = new Timer
-        //        {
-        //            Interval = (int)timeUntilRestriction.TotalMilliseconds
-        //        };
-
-        //        restrictionCheckTimer.Tick += (sender, e) =>
-        //        {
-        //            DisposeTimer(ref restrictionCheckTimer);
-        //            EnableRestrictionPeriod();
-        //        };
-        //        restrictionCheckTimer.Start();
-
-        //        LogEvent($"Restriction timer set to activate at: {restrictionStartTime}");
-        //    }
-        //    else if (now >= restrictionStartTime && now < todayStart)
-        //    {
-        //        // We are already within the restriction period
-        //        EnableRestrictionPeriod();
-        //    }
-        //}
         private void SetRestrictionTimer()
         {
             // Dispose of any existing restriction timer if already active
@@ -864,7 +691,5 @@ namespace SleepSchedulerApp
             };
             restrictionCheckTimer.Start();
         }
-
-
     }
 }

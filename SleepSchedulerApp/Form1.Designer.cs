@@ -216,7 +216,6 @@ namespace SleepSchedulerApp
             this.checkBoxStartup.TabIndex = 7;
             this.checkBoxStartup.Text = "تشغيل التطبيق مع بدء تشغيل النظام";
             this.checkBoxStartup.UseVisualStyleBackColor = true;
-            this.checkBoxStartup.CheckedChanged += new System.EventHandler(this.checkBoxStartup_CheckedChanged);
 
             // Add checkBoxStartup to groupBoxAppSettings
             this.groupBoxAppSettings.Controls.Add(this.checkBoxStartup);
