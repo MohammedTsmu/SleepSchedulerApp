@@ -21,7 +21,7 @@ namespace SleepSchedulerApp
         private ContextMenuStrip trayMenu;
 
         private bool isRestoringWindow = false; // Flag to prevent recursive calls
-
+        private bool isCountdownActive = false; // Flag to track if a countdown is active
 
         public Form1()
         {
@@ -310,13 +310,28 @@ namespace SleepSchedulerApp
         {
             LogEvent("بدأ وقت النوم. يتم التحضير لإيقاف تشغيل الكمبيوتر.");
 
-            // Show a non-cancellable countdown
-            CountdownForm countdownForm = new CountdownForm(5);
-            //CountdownForm countdownForm = new CountdownForm(10);
-            countdownForm.ShowDialog();
+            // Set countdown as active
+            isCountdownActive = true;
 
-            ShutdownComputer();
+            try
+            {
+                // Show a non-cancellable countdown
+                CountdownForm countdownForm = new CountdownForm(5);
+                countdownForm.ShowDialog();  // This should be a modal dialog to ensure the user can't avoid the shutdown
+
+                LogEvent("Countdown completed. Preparing to shut down.");
+                ShutdownComputer();
+            }
+            catch (Exception ex)
+            {
+                LogEvent($"Error in ShowCountdownAndShutdown: {ex.Message}");
+            }
+            finally
+            {
+                isCountdownActive = false;  // Reset flag after countdown is complete
+            }
         }
+
 
         private void ShutdownComputer()
         {
@@ -528,11 +543,15 @@ namespace SleepSchedulerApp
             };
         }
 
-        /// Shows the main application window.
-        // Restore opacity when showing the form
+        /// Shows the main application window, Restore opacity when showing the form.
         private void ShowMainWindow()
         {
-            if (isRestoringWindow) return;
+            if (isRestoringWindow || isCountdownActive)
+            {
+                // Do not allow restoring window if a countdown is active to avoid freezing or conflicting actions
+                MessageBox.Show("لا يمكن فتح الإعدادات أثناء العد التنازلي للإغلاق.", "تحذير", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             try
             {
@@ -553,7 +572,7 @@ namespace SleepSchedulerApp
                 isRestoringWindow = false;
             }
         }
-        
+
         /// Minimizes the application to the system tray.
         private void MinimizeToTray()
         {
@@ -672,7 +691,6 @@ namespace SleepSchedulerApp
             labelRestrictionInfo.Visible = true;
             toolTip1.SetToolTip(labelRestrictionInfo, "لا يمكن تعديل الإعدادات حتى ينتهي وقت النوم.");
             trayIcon.Text = "Sleep Scheduler (Restrictions Active)";
-
 
             // Start a timer to keep checking until the end of the sleep time to re-enable the controls
             DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
