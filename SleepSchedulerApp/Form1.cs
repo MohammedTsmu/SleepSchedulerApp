@@ -96,7 +96,7 @@ namespace SleepSchedulerApp
             this.Visible = false;
 
             //trayIcon.Text = "Sleep Scheduler 1.0.0";
-            trayIcon.Text = "Sleep Scheduler - Settings(double click)\nVersion: 1.0.0";
+            trayIcon.Text = "Sleep Scheduler - Settings [double click]\nVersion: 1.0.0";
 
             CheckSleepTime();
         }
