@@ -23,6 +23,9 @@ namespace SleepSchedulerApp
         private bool isRestoringWindow = false; // Flag to prevent recursive calls
         private bool isCountdownActive = false; // Flag to track if a countdown is active
 
+        private bool isFirstRun = Properties.Settings.Default.IsFirstRun; // Load the first-run flag
+        private int runNumber = Properties.Settings.Default.runNumber; // Load the run-count number flag
+
         public Form1()
         {
             InitializeComponent();
@@ -98,6 +101,32 @@ namespace SleepSchedulerApp
             //trayIcon.Text = "Sleep Scheduler 1.0.0";
             trayIcon.Text = "Sleep Scheduler - Settings [double click]\nVersion: 1.0.0";
 
+            // Show the system tray notification if it's the first time running
+            if (isFirstRun || runNumber <= 7)
+            {
+                int remainingNotifications = 7 - runNumber;
+
+                // Show a balloon tip for 10 seconds
+                trayIcon.ShowBalloonTip(10000, "Sleep Scheduler Running",
+                    $"The application is now running in the system tray. You can access it by clicking the tray icon. " +
+                    $"{(remainingNotifications > 0 ? $"This alert will be shown {remainingNotifications} more time(s)." : "This is the last alert.")}",
+                    ToolTipIcon.Info);
+
+                // Update the first run flag and run number
+                if (isFirstRun)
+                {
+                    Properties.Settings.Default.IsFirstRun = false;
+                }
+
+                runNumber++;
+                Properties.Settings.Default.runNumber = runNumber;
+
+                // Save updated settings
+                Properties.Settings.Default.Save();
+            }
+
+
+
             CheckSleepTime();
         }
 
@@ -120,25 +149,17 @@ namespace SleepSchedulerApp
             // Adjust validation to handle overnight sleep times
             if (selectedEndTime <= selectedStartTime && selectedEndTime.TimeOfDay <= selectedStartTime.TimeOfDay)
             {
-                MessageBox.Show("يجب أن يكون وقت انتهاء النوم بعد وقت بدء النوم.", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
+                // This validation works if the end time is on the same day and earlier than the start time.
+                // We need to adjust it to handle the scenario where the sleep end time is logically on the next day.
 
-            // Check if the restriction period has passed
-            DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
-            int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
+                // Calculate today and the next day end time scenario
+                DateTime todayStart = DateTime.Today.Add(selectedStartTime.TimeOfDay);
+                DateTime nextDayEnd = DateTime.Today.AddDays(1).Add(selectedEndTime.TimeOfDay);
 
-            if (savedRestrictionHours > 0 && lastChange > DateTime.MinValue)
-            {
-                DateTime restrictionEndTime = lastChange.AddHours(savedRestrictionHours);
-
-                if (DateTime.Now < restrictionEndTime)
+                // If the end time is on the next day, the logic should accept it
+                if (nextDayEnd <= todayStart)
                 {
-                    TimeSpan timeLeft = restrictionEndTime - DateTime.Now;
-                    
-                    MessageBox.Show($"لا يمكنك تغيير إعدادات النوم حتى {restrictionEndTime}.\n" +
-                                    $"الوقت المتبقي: {timeLeft.Hours} ساعة و {timeLeft.Minutes} دقيقة.",
-                                    "قيود التغيير نشطة", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("يجب أن يكون وقت انتهاء النوم بعد وقت بدء النوم، أو في اليوم التالي بشكل صحيح.", "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
             }
@@ -199,6 +220,7 @@ namespace SleepSchedulerApp
             // Set up the restriction period timer to activate restriction at the correct time
             SetRestrictionTimer();
         }
+
 
         private void CheckSleepTime()
         {
