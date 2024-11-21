@@ -26,9 +26,115 @@ namespace SleepSchedulerApp
         private bool isFirstRun = Properties.Settings.Default.IsFirstRun; // Load the first-run flag
         private int runNumber = Properties.Settings.Default.runNumber; // Load the run-count number flag
 
+        //public Form1()
+        //{
+        //    InitializeComponent();
+
+        //    // Resize the icon and assign it to the button
+        //    Icon saveIcon = Properties.Resources.save;
+        //    int desiredSize = 24; // Adjust to your preferred size
+        //    Bitmap saveBitmap = new Bitmap(saveIcon.ToBitmap(), new Size(desiredSize, desiredSize));
+        //    this.buttonSaveSettings.Image = saveBitmap;
+        //    this.buttonSaveSettings.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+        //    this.buttonSaveSettings.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+        //    this.buttonSaveSettings.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
+
+
+        //    // Retrieve saved settings
+        //    selectedStartTime = Properties.Settings.Default.StartTime;
+        //    selectedEndTime = Properties.Settings.Default.EndTime;
+
+        //    dateTimePickerStart.Value = selectedStartTime;
+        //    dateTimePickerEnd.Value = selectedEndTime;
+        //    checkBoxStartup.Checked = Properties.Settings.Default.RunOnStartup;
+
+        //    // Load the restriction period
+        //    numericUpDownRestrictionPeriod.Value = (decimal)Properties.Settings.Default.RestrictionPeriod;
+
+        //    // Display the last settings change time
+        //    DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
+        //    if (lastChange > DateTime.MinValue)
+        //    {
+        //        labelLastChangeTime.Text = $"تم تعديل الإعدادات آخر مرة في: {lastChange}";
+        //    }
+        //    else
+        //    {
+        //        labelLastChangeTime.Text = "لم يتم تعديل الإعدادات بعد.";
+        //    }
+
+        //    // Subscribe to the SessionSwitch event
+        //    SystemEvents.SessionSwitch += new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
+
+        //    // Initialize the restrictionCheckTimer but do not start it yet
+        //    restrictionCheckTimer = new Timer();
+        //    restrictionCheckTimer.Interval = 60 * 1000; // 1 minute
+        //    restrictionCheckTimer.Tick += (s, args) =>
+        //    {
+        //        DisableControlsIfRestrictionActive();
+        //    };
+
+        //    // Initialize the statusClearTimer
+        //    statusClearTimer = new Timer();
+        //    statusClearTimer.Interval = 5000; // 5 seconds
+        //    statusClearTimer.Tick += (s, args) =>
+        //    {
+        //        labelStatus.Text = "";
+        //        statusClearTimer.Stop();
+        //    };
+
+        //    // Check if the restriction period is active and update controls accordingly
+        //    DisableControlsIfRestrictionActive();
+
+        //    // Handle FormClosing to prevent closing during sleep time
+        //    this.FormClosing += Form1_FormClosing;
+
+        //    // Subscribe to the FormClosed event
+        //    this.FormClosed += Form1_FormClosed;
+
+        //    InitializeTrayIcon();
+        //    ConfigureFormBehavior();
+
+        //    this.Opacity = 0; // Make the form invisible
+        //    this.ShowInTaskbar = false;
+        //    this.Visible = false;
+
+        //    //trayIcon.Text = "Sleep Scheduler 1.0.0";
+        //    trayIcon.Text = "Sleep Scheduler - Settings [double click]\nVersion: 1.0.0";
+
+        //    // Show the system tray notification if it's the first time running
+        //    if (isFirstRun || runNumber <= 7)
+        //    {
+        //        int remainingNotifications = 7 - runNumber;
+
+        //        // Show a balloon tip for 10 seconds
+        //        trayIcon.ShowBalloonTip(10000, "Sleep Scheduler Running",
+        //            $"The application is now running in the system tray. You can access it by clicking the tray icon. " +
+        //            $"{(remainingNotifications > 0 ? $"This alert will be shown {remainingNotifications} more time(s)." : "This is the last alert.")}",
+        //            ToolTipIcon.Info);
+
+        //        // Update the first run flag and run number
+        //        if (isFirstRun)
+        //        {
+        //            Properties.Settings.Default.IsFirstRun = false;
+        //        }
+
+        //        runNumber++;
+        //        Properties.Settings.Default.runNumber = runNumber;
+
+        //        // Save updated settings
+        //        Properties.Settings.Default.Save();
+        //    }
+
+
+
+        //    CheckSleepTime();
+        //}
         public Form1()
         {
             InitializeComponent();
+
+            // Initialize tray icon first to avoid any potential null access issues
+            InitializeTrayIcon();
 
             // Resize the icon and assign it to the button
             Icon saveIcon = Properties.Resources.save;
@@ -38,7 +144,6 @@ namespace SleepSchedulerApp
             this.buttonSaveSettings.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.buttonSaveSettings.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             this.buttonSaveSettings.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
-
 
             // Retrieve saved settings
             selectedStartTime = Properties.Settings.Default.StartTime;
@@ -91,7 +196,6 @@ namespace SleepSchedulerApp
             // Subscribe to the FormClosed event
             this.FormClosed += Form1_FormClosed;
 
-            InitializeTrayIcon();
             ConfigureFormBehavior();
 
             this.Opacity = 0; // Make the form invisible
@@ -106,11 +210,15 @@ namespace SleepSchedulerApp
             {
                 int remainingNotifications = 7 - runNumber;
 
-                // Show a balloon tip for 10 seconds
-                trayIcon.ShowBalloonTip(10000, "Sleep Scheduler Running",
-                    $"The application is now running in the system tray. You can access it by clicking the tray icon. " +
-                    $"{(remainingNotifications > 0 ? $"This alert will be shown {remainingNotifications} more time(s)." : "This is the last alert.")}",
-                    ToolTipIcon.Info);
+                // Ensure trayIcon is not null before showing the balloon tip
+                if (trayIcon != null)
+                {
+                    // Show a balloon tip for 10 seconds
+                    trayIcon.ShowBalloonTip(10000, "Sleep Scheduler Running",
+                        $"The application is now running in the system tray. You can access it by clicking the tray icon. " +
+                        $"{(remainingNotifications > 0 ? $"This alert will be shown {remainingNotifications} more time(s)." : "This is the last alert.")}",
+                        ToolTipIcon.Info);
+                }
 
                 // Update the first run flag and run number
                 if (isFirstRun)
@@ -125,10 +233,10 @@ namespace SleepSchedulerApp
                 Properties.Settings.Default.Save();
             }
 
-
-
             CheckSleepTime();
         }
+
+
 
         private void DateTimePickerStart_ValueChanged(object sender, EventArgs e)
         {
@@ -454,49 +562,49 @@ namespace SleepSchedulerApp
             Properties.Settings.Default.Save();
         }
 
-        private void DisableControlsIfRestrictionActive()
-        {
-            DateTime now = DateTime.Now;
-            DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
-            DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
-            int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
+        //private void DisableControlsIfRestrictionActive()
+        //{
+        //    DateTime now = DateTime.Now;
+        //    DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
+        //    DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+        //    int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
 
-            // Calculate restriction start time: X hours before the sleep start time
-            DateTime restrictionStartTime = todayStart.AddHours(-savedRestrictionHours);
+        //    // Calculate restriction start time: X hours before the sleep start time
+        //    DateTime restrictionStartTime = todayStart.AddHours(-savedRestrictionHours);
 
-            // Restriction is active if we are between restriction start and sleep end time
-            if (now >= restrictionStartTime && now <= todayEnd)
-            {
-                SetControlsEnabled(false);
+        //    // Restriction is active if we are between restriction start and sleep end time
+        //    if (now >= restrictionStartTime && now <= todayEnd)
+        //    {
+        //        SetControlsEnabled(false);
 
-                // Update label to show restriction status
-                labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {todayEnd}";
-                labelRestrictionInfo.Visible = true;
+        //        // Update label to show restriction status
+        //        labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {todayEnd}";
+        //        labelRestrictionInfo.Visible = true;
 
-                // Start the timer to keep checking until restriction ends
-                if (!restrictionCheckTimer.Enabled)
-                {
-                    restrictionCheckTimer.Interval = (int)(todayEnd - now).TotalMilliseconds;
-                    restrictionCheckTimer.Start();
-                }
-            }
-            else
-            {
-                // Restriction has ended, re-enable controls and clear restriction-related settings
-                SetControlsEnabled(true);
-                labelRestrictionInfo.Visible = false;
+        //        // Start the timer to keep checking until restriction ends
+        //        if (!restrictionCheckTimer.Enabled)
+        //        {
+        //            restrictionCheckTimer.Interval = (int)(todayEnd - now).TotalMilliseconds;
+        //            restrictionCheckTimer.Start();
+        //        }
+        //    }
+        //    else
+        //    {
+        //        // Restriction has ended, re-enable controls and clear restriction-related settings
+        //        SetControlsEnabled(true);
+        //        labelRestrictionInfo.Visible = false;
 
-                // Reset LastSettingsChangeTime to allow new changes
-                Properties.Settings.Default.LastSettingsChangeTime = DateTime.MinValue;
-                Properties.Settings.Default.Save();
+        //        // Reset LastSettingsChangeTime to allow new changes
+        //        Properties.Settings.Default.LastSettingsChangeTime = DateTime.MinValue;
+        //        Properties.Settings.Default.Save();
 
-                // Stop the timer since restriction has ended
-                if (restrictionCheckTimer.Enabled)
-                {
-                    restrictionCheckTimer.Stop();
-                }
-            }
-        }
+        //        // Stop the timer since restriction has ended
+        //        if (restrictionCheckTimer.Enabled)
+        //        {
+        //            restrictionCheckTimer.Stop();
+        //        }
+        //    }
+        //}
 
         private void SetControlsEnabled(bool enabled)
         {
@@ -515,32 +623,40 @@ namespace SleepSchedulerApp
         /// Initializes the system tray icon and menu.
         private void InitializeTrayIcon()
         {
-            // Create tray menu with options
-            trayMenu = new ContextMenuStrip();
-            trayMenu.Items.Add("Open Settings", null, (s, e) =>
+            try
             {
-                try
+                // Create tray menu with options
+                trayMenu = new ContextMenuStrip();
+                trayMenu.Items.Add("Open Settings", null, (s, e) =>
                 {
-                    ShowMainWindow();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to open settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            });
+                    try
+                    {
+                        ShowMainWindow();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to open settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                });
 
-            // Configure tray icon
-            trayIcon = new NotifyIcon
+                // Configure tray icon
+                trayIcon = new NotifyIcon
+                {
+                    Text = "Sleep Scheduler",
+                    Icon = Properties.Resources.sleep, // Ensure this resource exists
+                    ContextMenuStrip = trayMenu,
+                    Visible = true
+                };
+
+                // Handle double-click to open settings
+                trayIcon.DoubleClick += (s, e) => ShowMainWindow();
+            }
+            catch (Exception ex)
             {
-                Text = "Sleep Scheduler",
-                Icon = Properties.Resources.sleep, // Ensure this resource exists
-                ContextMenuStrip = trayMenu,
-                Visible = true
-            };
-
-            // Handle double-click to open settings
-            trayIcon.DoubleClick += (s, e) => ShowMainWindow();
+                LogEvent($"Error initializing trayIcon: {ex.Message}");
+            }
         }
+
 
         /// Configures the behavior of the main window on startup and minimize/close actions.
         private void ConfigureFormBehavior()
@@ -640,9 +756,59 @@ namespace SleepSchedulerApp
             }
         }
 
+        private void DisableControlsIfRestrictionActive()
+        {
+            DateTime now = DateTime.Now;
+            DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
+            DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+            int savedRestrictionHours = Properties.Settings.Default.RestrictionPeriod;
+
+            // Adjust todayEnd if the sleep period goes overnight
+            if (selectedEndTime <= selectedStartTime)
+            {
+                todayEnd = todayEnd.AddDays(1);
+            }
+
+            // Calculate restriction start time: X hours before the sleep start time
+            DateTime restrictionStartTime = todayStart.AddHours(-savedRestrictionHours);
+            DateTime lastChange = Properties.Settings.Default.LastSettingsChangeTime;
+
+            // Restriction is active if we are between restriction start and sleep end time
+            if (lastChange > DateTime.MinValue)
+            {
+                // Ensure the restriction end is accurately calculated based on the last settings change
+                DateTime restrictionEnd = lastChange.AddHours(savedRestrictionHours);
+
+                if (now < restrictionEnd)
+                {
+                    SetControlsEnabled(false);
+
+                    // Update label to show restriction status
+                    labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {todayEnd}";
+                    labelRestrictionInfo.Visible = true;
+
+                    toolTip1.SetToolTip(labelRestrictionInfo, "لا يمكن تعديل الإعدادات حتى ينتهي وقت النوم.");
+                    trayIcon.Text = "Sleep Scheduler (Restrictions Active)";
+
+                    LogEvent("Controls disabled due to active restriction period.");
+                }
+                else
+                {
+                    SetControlsEnabled(true);
+                    labelRestrictionInfo.Visible = false;
+
+                    LogEvent("Controls enabled, restriction period has ended.");
+
+                    // Reset LastSettingsChangeTime to allow new changes
+                    Properties.Settings.Default.LastSettingsChangeTime = DateTime.MinValue;
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+
+        // SetRestrictionTimer updated to directly invoke EnableRestrictionPeriod if condition is met
         private void SetRestrictionTimer()
         {
-            // Dispose of any existing restriction timer if already active
             DisposeTimer(ref restrictionCheckTimer);
 
             DateTime now = DateTime.Now;
@@ -653,13 +819,10 @@ namespace SleepSchedulerApp
 
             if (now < restrictionStartTime)
             {
-                // Calculate the time remaining until restriction period starts
                 TimeSpan timeUntilRestriction = restrictionStartTime - now;
 
-                // Check if the interval exceeds the maximum allowed by Timer
                 if (timeUntilRestriction.TotalMilliseconds <= Int32.MaxValue)
                 {
-                    // Set a timer to enable restriction at the right time
                     restrictionCheckTimer = new Timer
                     {
                         Interval = (int)timeUntilRestriction.TotalMilliseconds
@@ -677,7 +840,6 @@ namespace SleepSchedulerApp
                 {
                     // Handle longer intervals by setting up a periodic check every 12 hours
                     LogEvent("Restriction timer interval too long. Setting a periodic check instead.");
-
                     restrictionCheckTimer = new Timer
                     {
                         Interval = 12 * 60 * 60 * 1000 // 12 hours
@@ -695,7 +857,6 @@ namespace SleepSchedulerApp
             }
             else if (now >= restrictionStartTime && now < todayStart)
             {
-                // We are already within the restriction period
                 EnableRestrictionPeriod();
             }
         }
@@ -705,32 +866,41 @@ namespace SleepSchedulerApp
             LogEvent("Enabling restriction period.");
 
             // Disable controls to prevent changes
-            //DisableControls();
             SetControlsEnabled(false);
 
-            // Display restriction information to the user
-            DateTime todayStart = DateTime.Today.AddHours(selectedStartTime.Hour).AddMinutes(selectedStartTime.Minute);
-            labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {selectedEndTime}";
+            DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
+            if (selectedEndTime <= selectedStartTime)
+            {
+                todayEnd = todayEnd.AddDays(1);
+            }
+
+            labelRestrictionInfo.Text = $"الإعدادات مقيدة حتى: {todayEnd}";
             labelRestrictionInfo.Visible = true;
             toolTip1.SetToolTip(labelRestrictionInfo, "لا يمكن تعديل الإعدادات حتى ينتهي وقت النوم.");
             trayIcon.Text = "Sleep Scheduler (Restrictions Active)";
 
-            // Start a timer to keep checking until the end of the sleep time to re-enable the controls
-            DateTime todayEnd = DateTime.Today.AddHours(selectedEndTime.Hour).AddMinutes(selectedEndTime.Minute);
             TimeSpan timeUntilEnd = todayEnd - DateTime.Now;
 
-            DisposeTimer(ref restrictionCheckTimer); // Dispose the old timer before creating a new one
-
-            restrictionCheckTimer = new Timer
-            {
-                Interval = (int)timeUntilEnd.TotalMilliseconds
-            };
-            restrictionCheckTimer.Tick += (sender, e) =>
+            if (timeUntilEnd.TotalMilliseconds > 0)
             {
                 DisposeTimer(ref restrictionCheckTimer);
-                DisableControlsIfRestrictionActive();
-            };
-            restrictionCheckTimer.Start();
+                restrictionCheckTimer = new Timer
+                {
+                    Interval = (int)timeUntilEnd.TotalMilliseconds
+                };
+                restrictionCheckTimer.Tick += (sender, e) =>
+                {
+                    DisposeTimer(ref restrictionCheckTimer);
+                    DisableControlsIfRestrictionActive();
+                };
+                restrictionCheckTimer.Start();
+            }
+            else
+            {
+                LogEvent("Restriction timer not set due to invalid interval. Time until end is negative.");
+            }
         }
+
+
     }
 }
