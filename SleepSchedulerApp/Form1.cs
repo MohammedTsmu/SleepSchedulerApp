@@ -550,7 +550,7 @@ namespace SleepSchedulerApp
             if (isRestoringWindow || isCountdownActive)
             {
                 // Do not allow restoring window if a countdown is active to avoid freezing or conflicting actions
-                MessageBox.Show("لا يمكن فتح الإعدادات أثناء العد التنازلي للإغلاق.", "تحذير", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                //MessageBox.Show("لا يمكن فتح الإعدادات أثناء العد التنازلي للإغلاق.", "تحذير", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
